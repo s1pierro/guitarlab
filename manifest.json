@@ -2,7 +2,7 @@
   "name": "GuitarLab",
   "short_name": "GuitarLab",
   "description": "Guitar*Lab is a guitar oriented tool to explore music",
-  "start_url": "/guitarlab2/index.html",
+  "start_url": "/guitarlab/index.html",
   "display": "fullscreen",
   "background_color": "#e61",
   "theme_color": "#4d3700",
