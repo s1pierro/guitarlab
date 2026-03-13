@@ -36,14 +36,11 @@
         }
     </script>
         <style type="text/css">
-        html, body
-        {
+        html, body {
             touch-action: manipulation;
             user-select: none;
             font-family: sans-serif;
-            background: #9224a0;
-            background: #000;
-    background: #efefef;
+            background: #0a0a1a;
             padding: 0;
             margin: 0;
             width: 100vw;
@@ -51,21 +48,36 @@
             overflow: hidden;
         }
         #start {
-            display: block;
-            transform: translate(-0%, 0%);
-            border: 0px solid #000;
-            background: #fff1;
-            font-family: sans-serif;
-            font-weight: bold;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100vw;
             height: 100vh;
-            margin-top: 0%;
+            background: radial-gradient(ellipse at center, #2d1b4e 0%, #0a0a1a 70%);
+            cursor: pointer;
         }
-        div#start > img{
-            width: 60%;
-            height:auto;
-            background: #fff0;
-            margin: 20%;
-
+        div#start > img {
+            width: min(42vw, 42vh);
+            height: auto;
+            animation: pulse 3s ease-in-out infinite;
+            filter: drop-shadow(0 0 2.5em #7c3aed66);
+        }
+        #start-hint {
+            margin-top: 2.5em;
+            color: #ffffff55;
+            font-size: 0.75em;
+            letter-spacing: 0.35em;
+            text-transform: uppercase;
+            animation: blink 2.5s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1);    opacity: 0.85; }
+            50%       { transform: scale(1.06); opacity: 1;    }
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 0.25; }
+            50%      { opacity: 0.75; }
         }
     </style>
 
@@ -82,6 +94,7 @@
 <body>
     <div id="start">
         <img src="assets/icon.svg">
+        <span id="start-hint">touch to start</span>
     </div>
 
     <script src="js/Tone.js"></script>
