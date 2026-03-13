@@ -1,3 +1,9 @@
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { MTLLoader } from 'three/addons/loaders/MTLLoader.js';
+import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+import { notesFr, notes, allnotes, allnotesFr, intervals, chordtypes, extraireChiffres, extractBaseNote, Interval, Chord } from './music-theory.js';
+
 // Données musicales dans music-theory.js (notes, intervalles, accords, Interval, Chord)
 
 // quelques fonctions utilitaires
@@ -91,7 +97,7 @@ this.nfrets = nfrets;
 this.touchmarker = document.createElement('div');
 this.touchmarker.classList.add('touch');
 this.touchmarker.innerText = '.';
-let remaninglength = this.d*1.4; 
+let remaninglength = this.d*1.4;
 let s = this.d/(1-1/(2**(nfrets/12)));
 remaninglength = s;
 
@@ -132,7 +138,7 @@ tap (fret) {
     let oct = (allnotes.indexOf(this.name)+fret);
     this.synth.triggerAttackRelease(allnotes[oct], "1n");
 }
-addNoteHelper () { 
+addNoteHelper () {
 
     let tmp2 = allnotes.indexOf(this.name);
 
@@ -269,6 +275,8 @@ class ComputedGuitar {
 
         let tl = document.getElementById('touch-layer');
         tl.innerHTML = 'print layer';
+        if (!this.groundrender.strings || !this.groundrender.strings[0]) return;
+
         for (var j = 0; j < this.strings.length; j++) {
 
             let hf = this.model.holds[j];
@@ -300,7 +308,7 @@ class ComputedGuitar {
                                 nitbkgd.classList.add('red');
 
                 //    nit.classList.add('red');
-                   } 
+                   }
 
                 else
                     nit.classList.add('icon-it-5');
@@ -321,7 +329,7 @@ class ComputedGuitar {
 
             tl.appendChild(nitbkgd);
             tl.appendChild(nit);
-        }   
+        }
     }
 }
 class ChordPinBoard {
@@ -355,7 +363,7 @@ class ChordPinBoard {
         }
         this.update();
     }
-    
+
     has (chord) {
       for (let i = 0; i < this.pinnedchords.length; i++) {
         if ( this.pinnedchords[i].sameAs(chord) )
@@ -400,9 +408,9 @@ class PluckPad {
         this.tpCache = [];
         this.update();
     }
-    pluck (string) {  
+    pluck (string) {
 
-         let timing = Tone.now();              
+         let timing = Tone.now();
          string.synth.triggerAttack(string.getstate().octavednote, timing);
            //     this.strings[i].synth.triggerAttack(this.strings[i].getstate().octavednote, timing);
     }
@@ -419,7 +427,7 @@ class PluckPad {
             ctnr.style.color = "#333";
             ctnr.style.textShadow = "0 0 0.15em #fff5";
 
-            
+
 
             ctnr.style.marginLeft = "0.5em";
             ctnr.style.marginBottom = "0.5em";
@@ -463,11 +471,11 @@ class PluckPad {
             let apad = {
                 string: this.strings[i],
                 ctnr : ctnr
-                
+
             }
             this.pads.push(apad);
             this.domctnr.appendChild(ctnr);
-           
+
         }
     }
 }
@@ -588,7 +596,7 @@ class ChordGuesser {
                 }
             }
             if ( highscore.score > 0 )
-            {                
+            {
                 let rawthings = this.computedguitar.getholdedstrings();
                 let rawnotes = [];
                 for (var j = 0; j < rawthings.length; j++) {
@@ -649,8 +657,8 @@ class ChordGuesser {
             //////////////////////////////////////////////
             //////////////////////////////////////////////
             //////////////////////////////////////////////
-      
-  
+
+
 
             for (var j = 0; j < rawthings.length; j++) {
                 //-console.log(rawthings[j].basenote);
@@ -659,7 +667,7 @@ class ChordGuesser {
                 sheme+='<span class="itv itv-'+this.getinterval( founded[i].root,  rawthings[j].basenote).replace('\#', 'm')+'">'+rawthings[j].basenote+'</span>';
             }
 
-        
+
             let rawintervals = [];
             for (var j = 0; j < rawthings.length; j++) {
                 if (rawthings[j].fret != -1)
@@ -681,7 +689,7 @@ class ChordGuesser {
                 pinbtn.innerHTML = '<i class="icon-star-1"></i>';
                 pinbtn.innerHTML = '<i class="icon-attach-2"></i>';
 
-                
+
               if (this.chordpinboard.has(founded[0].chord)  == true)
                 aguesstitle.prepend(pinbtn);
               else {
@@ -690,8 +698,8 @@ class ChordGuesser {
 
                 aguesstitle.prepend(pinbtn);
               }
-                
-                
+
+
                 pinbtn.addEventListener ('click', function () {
                     //-console.log(this);
                     //-console.log(founded);
@@ -726,7 +734,7 @@ class Cameraman {
         this.camera = new THREE.PerspectiveCamera( 25, window.innerWidth / window.innerHeight, 0.1, 15 );
         this.camera.position.set( 0.13203648995258088, -0.05773723849390569, 1.104895121140156 );
 
-        this.controls = new THREE.OrbitControls( this.camera );
+        this.controls = new OrbitControls( this.camera, document.getElementById('app-body') || document.body );
         this.controls.maxDistance = 2;
         this.controls.minDistance = 0.3;
         this.controls.maxPolarAngle = Math.PI/1.2;
@@ -741,8 +749,19 @@ class Cameraman {
             };
             this.onNeedRender();
         }, false );
-        window.addEventListener( 'touchmove', () => this.onNeedRender(), false );
-        window.addEventListener( 'wheel',     () => this.onNeedRender(), false );
+        const updateFromTouch = (e) => {
+            const touch = e.touches[0] || e.changedTouches[0];
+            if (!touch) return;
+            this.normalisedmouse = {
+                x: (touch.clientX / window.innerWidth) * 2 - 1,
+                y: 1 - (touch.clientY / window.innerHeight) * 2
+            };
+
+            this.onNeedRender();
+        };
+        window.addEventListener( 'touchstart', updateFromTouch, { passive: true });
+        window.addEventListener( 'touchmove',  updateFromTouch, { passive: true });
+        window.addEventListener( 'wheel',      () => this.onNeedRender(), false );
     }
     update () {
         this.controls.update();
@@ -767,7 +786,7 @@ class GroundRender {
 
         this.onFretClick = onFretClick;
         this.onAfterRender = onAfterRender;
-        if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
+        if ( ! navigator.gpu && ! window.WebGLRenderingContext ) { alert('WebGL non supporté par ce navigateur.'); return; }
         this.statebar = document.getElementById('app-stamp');
         this.domdest = domdest;
         this.pos = { x: 0.0, y: 0, z: 0.0};
@@ -792,16 +811,17 @@ class GroundRender {
         this.scene.traverse((child) => {
                 intersects.push(...raycaster.intersectObject(child));
         });
-        if (intersects[0])
 
-        if (intersects[0].object.name == 'guitar.fingerboard' || intersects[0].object.name == 'guitar.misc')  {
-           
+        const hit = intersects.find(i => i.object.name === 'guitar.fingerboard' || i.object.name === 'guitar.misc');
+        if (!hit) return;
+        if (true)  {
+
             let nearest = 100;
             let neareststring;
             for (var i = 0; i < this.strings.length; i++) {
                 let tmp = this.strings[i].top;
 
-                let d = new THREE.Vector3(tmp.x, tmp.y, tmp.z).distanceTo(intersects[0].point );
+                let d = new THREE.Vector3(tmp.x, tmp.y, tmp.z).distanceTo(hit.point );
                 if (d<nearest) {
                     nearest = d;
                     neareststring = i;
@@ -831,7 +851,7 @@ class GroundRender {
 
 
                   let plane = new THREE.Mesh(
-            new THREE.PlaneBufferGeometry( 40, 40 ),
+            new THREE.PlaneGeometry( 40, 40 ),
             new THREE.MeshPhongMaterial( { color: 0x111111, specular: 0x000000 } )
             );
         plane.rotation.x = -Math.PI/2;
@@ -852,16 +872,8 @@ class GroundRender {
         this.renderer.setPixelRatio( window.devicePixelRatio );
         this.renderer.setClearColor( 0xffffff, 1.0);
 
-        this.renderer.gammaInput = true;
-        this.renderer.gammaOutput = true;
-
+        this.renderer.outputColorSpace = THREE.SRGBColorSpace;
         this.renderer.shadowMap.enabled = true;
-        // shut firefox up !
-        // Firefox use to flood //-console with 100' of Shader warning ... 
-        var ctx = this.renderer.context;
-        ctx.getShaderInfoLog = function() {
-            return ''
-        };  
         this.onWindowResize();
         this.renderer.domElement.id = 'ground-render';
         this.domdest.appendChild(this.renderer.domElement)
@@ -871,11 +883,11 @@ class GroundRender {
     }
     loadWavefrontGuitar (objfilename, mtlfilename, path = '') {
 
-        new THREE.MTLLoader().setPath( path ).load( mtlfilename,
+        new MTLLoader().setPath( path ).load( mtlfilename,
         function ( materials ) {
 
             materials.preload();
-            new THREE.OBJLoader(this.manager).setMaterials( materials ).setPath( path ).load( objfilename,
+            new OBJLoader(this.manager).setMaterials( materials ).setPath( path ).load( objfilename,
             function ( object ) {
 
                 object.position.set( this.pos.x, this.pos.y, this.pos.z );
@@ -979,7 +991,7 @@ class GroundRender {
         directionalLight.shadow.mapSize.height = 1024;
 
         directionalLight.shadow.bias = -0.002;
-    } 
+    }
     genStringDef (pitch, neck, top, nfret = 18, thickness = 1, color = 0xff0000) {
         let fretpitchs = [];
         let frets = [];
@@ -997,15 +1009,15 @@ class GroundRender {
         let norme = new THREE.Vector3(neck.x-top.x, neck.y-top.y, neck.z-top.z).normalize();
         //let diapasonleft = new THREE.Vector3(neck.x, neck.y, neck.z).distanceTo( new THREE.Vector3(top.x, top.y, top.z));
      //   //-console.log ('diapason: '+diapasonleft)
- 
+
             let opos = {
                 x: neck.x + 0.013*norme.x,
                 y: neck.y + 0.013*norme.y,
                 z: neck.z + 0.013*norme.z,
             }
 
-            let geo = new THREE.SphereGeometry( 0.0001, 32, 16 ); 
-            let mtl = new THREE.MeshBasicMaterial( { color: 0xffffff } ); 
+            let geo = new THREE.SphereGeometry( 0.0001, 32, 16 );
+            let mtl = new THREE.MeshBasicMaterial( { color: 0xffffff } );
             let sph = new THREE.Mesh( geo, mtl );
             sph.position.set (opos.x, opos.y, opos.z);
             this.scene.add(sph);
@@ -1020,17 +1032,17 @@ class GroundRender {
                 y: top.y + ((frets[i]+frets[i-1])/2)*norme.y,
                 z: top.z + ((frets[i]+frets[i-1])/2)*norme.z,
             }
-           let geometry = new THREE.SphereGeometry( 0.0001, 32, 16 ); 
-            let material = new THREE.MeshBasicMaterial( { color: 0xff0000 } ); 
+           let geometry = new THREE.SphereGeometry( 0.0001, 32, 16 );
+            let material = new THREE.MeshBasicMaterial( { color: 0xff0000 } );
             let sphere = new THREE.Mesh( geometry, material );
             sphere.position.set (apos.x, apos.y, apos.z);
             this.scene.add(sphere);
-            fingerprints.push(apos);     
+            fingerprints.push(apos);
             fingerprintz.push(sphere);
 
           }
-          let geometryb = new THREE.SphereGeometry( 0.0001, 32, 16 ); 
-            let materialb = new THREE.MeshBasicMaterial( { color: 0xffffff } ); 
+          let geometryb = new THREE.SphereGeometry( 0.0001, 32, 16 );
+            let materialb = new THREE.MeshBasicMaterial( { color: 0xffffff } );
             let sphereb = new THREE.Mesh( geometryb, materialb );
            sphereb.position.set (fingerprints[0].x, fingerprints[0].y, fingerprints[0].z);
 
@@ -1075,8 +1087,8 @@ class GroundRender {
     }
 }
 // la classe application utilisera différentes instances des objets précédents. le lancement complet de l'application intervient a l'appel de son constructeur.
-class Application { 
-  constructor () { 
+class Application {
+  constructor () {
         Tone.start();
         this.appbody = document.createElement('div');
         this.appbody.id = 'app-body';
@@ -1085,12 +1097,12 @@ class Application {
         this.appstamp.id = 'app-stamp';
         this.appstamp.innerHTML = '<i class="icon-sliders"></i> Guitar Lab';
         this.appbody.appendChild (this.appstamp);
-        
+
         this.touchlayer = document.createElement('div');
         this.touchlayer.id = 'touch-layer';
         //this.touchlayer.innerHTML = '<i class="icon-sliders"></i> Guitar Lab';
         this.appbody.appendChild (this.touchlayer);
-     
+
         this.renderlayer = document.createElement('div');
         this.renderlayer.id = 'render-layer';
         //this.touchlayer.innerHTML = '<i class="icon-sliders"></i> Guitar Lab';
@@ -1110,7 +1122,7 @@ class Application {
      //   this.appbody.appendChild (this.neckside);
         this.rollkeysside = document.createElement('div');
         this.rollkeysside.id = 'rollkeys-side';
-    //    this.appbody.appendChild (this.rollkeysside);       
+    //    this.appbody.appendChild (this.rollkeysside);
         this.neckboard = document.createElement('div');
         this.neckboard.id = 'neck-board';
         this.neckside.appendChild (this.neckboard);
@@ -1122,7 +1134,7 @@ class Application {
         var self = this;
         this.appbody.appendChild(strumbtn);
         window.addEventListener("keydown", (event) => {
-      
+
         if ( 75 == event.keyCode ) this.computedguitar.play(0);
         if ( 76 == event.keyCode ) this.computedguitar.play(1);
         if ( 77 == event.keyCode ) this.computedguitar.play(2);
@@ -1135,6 +1147,7 @@ class Application {
         });
 
         this.appbody.addEventListener('click', function (argument) {
+
             this.groundrender.raycast();
         }.bind(this), false);
 
@@ -1159,31 +1172,31 @@ class Application {
                     partials: [0.8, 0.2, 0.1, 0.05, 0.025]
                 },
                 {
-                    pitch: 'A2', thickness: 0.75, nfret: nfret, 
+                    pitch: 'A2', thickness: 0.75, nfret: nfret,
                     neckxyz: {x: -0.013318, y: 0.326, z: 0.000887},
                     topxyz: {x: -0.013318*wideness, y: -0.326, z: 0.005246},
                     partials: [0.8, 0.2, 0.1, 0.05, 0.025]
                 },
                 {
-                    pitch: 'D3', thickness: 0.70, nfret: nfret, 
+                    pitch: 'D3', thickness: 0.70, nfret: nfret,
                     neckxyz: {x: -0.004787, y: 0.326, z: 0.000887},
                     topxyz: {x: -0.004787*wideness, y: -0.326, z: 0.005246},
                     partials: [0.8, 0.2, 0.1, 0.05]
                 },
                 {
-                    pitch: 'G3', thickness: 0.65, nfret: nfret, 
+                    pitch: 'G3', thickness: 0.65, nfret: nfret,
                     neckxyz: {x: 0.003744, y: 0.326, z: 0.000887},
                     topxyz: {x: 0.003744*wideness, y: -0.326, z: 0.005246},
                     partials: [0.8, 0.2, 0.1]
                 },
                 {
-                    pitch: 'B3', thickness: 0.55, nfret: nfret, 
+                    pitch: 'B3', thickness: 0.55, nfret: nfret,
                     neckxyz: {x: 0.012276, y: 0.326, z: 0.000887},
                     topxyz: {x: 0.012276*wideness, y: -0.326, z: 0.005246},
                     partials: [0.8, 0.2]
                 },
                 {
-                    pitch: 'E4', thickness: 0.5, nfret: nfret, 
+                    pitch: 'E4', thickness: 0.5, nfret: nfret,
                     neckxyz: {x: 0.020806, y: 0.326, z: 0.000887},
                     topxyz: {x: 0.020806*wideness, y: -0.326, z: 0.005246},
                     partials: [0.8, 0.2]
@@ -1203,8 +1216,15 @@ class Application {
         this.pluckpad = new PluckPad(this.computedguitar.strings, this.appbody);
     }
     start () {
-     
+
     }
 }
 
-
+document.addEventListener('DOMContentLoaded', () => {
+    const useraction = document.getElementById('start');
+    useraction.addEventListener('click', function() {
+        this.remove();
+        window.application = new Application();
+        window.application.start();
+    }, true);
+});
