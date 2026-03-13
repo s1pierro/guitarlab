@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0 maximum-scale=1.0">
+    <title>GuitarLab</title>
+
+    <!-- Ajout du manifeste PWA -->
+    <link rel="manifest" href="manifest.json?guitarlab=2x">
+
+    <!-- Définition de la couleur de la barre d'adresse sur les navigateurs mobiles -->
+    <meta name="theme-color" content="#3498db">
+
+    <script src="//cdn.jsdelivr.net/npm/eruda"></script>
+    <script type="text/javascript">//eruda.init();</script>
+    <!-- Icônes pour différentes tailles d'écrans -->
+    <link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="assets/icon-512.png">
+
+    <meta name="description" content="guitar based music explorer tool">
+
+    <!-- Service Worker (à ajouter dans un fichier séparé et enregistré avec l'extension .js) -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('service-worker.js?guitarlab=2x')
+            .then(function (registration) {
+                console.log('Service Worker enregistré avec succès:', registration);
+            })
+            .catch(function (error) {
+                console.log('Erreur lors de l\'enregistrement du Service Worker:', error);
+            });
+        }
+    </script>
+        <style type="text/css">
+        html, body
+        {
+            touch-action: manipulation;
+            user-select: none;
+            font-family: sans-serif;
+            background: #9224a0;
+            background: #000;
+    background: #efefef;
+            padding: 0;
+            margin: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+        #start {
+            display: block;
+            transform: translate(-0%, 0%);
+            border: 0px solid #000;
+            background: #fff1;
+            font-family: sans-serif;
+            font-weight: bold;
+            height: 100vh;
+            margin-top: 0%;
+        }
+        div#start > img{
+            width: 60%;     
+            height:auto;
+            background: #fff0;
+            margin: 20%;
+
+        }
+    </style>
+</head>
+
+<body>
+    <div id="start">
+        <img src="assets/icon.svg">
+    </div>
+
+  <script>
+    
+  
+
+
+// quelques fonctions utilitaires
+function loadScript(scripts, callback) {
+
+    const script = document.createElement('script');
+    script.src = scripts[0];
+    document.body.appendChild(script);
+    script.onload = function() {
+        callback();
+    };
+}
+function loadStyles(styles) {
+
+
+    const style = document.createElement('link');
+    style.rel = 'stylesheet';
+    style.href = styles[0]+'?='+Date.now();
+    document.head.appendChild(style);
+    style.onload = function() {
+        if (styles.length > 1) {
+            loadStyles(styles.slice(1));
+        }
+    };
+}
+function loadScripts(scripts) {
+
+
+    const script = document.createElement('script');
+    script.src = scripts[0]+'?='+Date.now();
+    document.body.appendChild(script);
+    script.onload = function() {
+        if (scripts.length > 1) {
+            loadScripts(scripts.slice(1));
+        } 
+    };
+}
+
+loadStyles([
+    'css/gao-fonticons-max.css',
+    'css/style.css'
+    ]);
+loadScripts(['js/three.min.js', 'js/OrbitControls.js', 'js/STLLoader.js', 'js/MTLLoader.js', 'js/OBJLoader.js', 'js/Detector.js', 'js/stats.min.js', 'music-theory.js', 'gao.js']);
+//window.chordPad = [];
+
+window.onload = function() {
+
+// Tone js need an user action context to start audio...
+
+    var useraction = document.getElementById ('start');
+    useraction.addEventListener('click', function () {
+        this.remove();
+        loadScript(['js/Tone.js'], function (){ 
+            window.application = new Application ();
+            window.application.start();
+        });
+    }, true)
+}
+</script>
+</body>
+</html>
