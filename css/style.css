@@ -71,7 +71,7 @@
     display: flex;
     width: 100vw;
     height: 3em;
-    bottom: 0.5em;
+    bottom: calc(0.5em + env(safe-area-inset-bottom, 0px));
     left: 50vw;
     transform: translate(-50%, 0);
     align-items: center;
@@ -83,7 +83,7 @@
     display: flex;
     width: 100vw;
     height: 1em;
-    bottom: Calc(1vh + 3.25em);
+    bottom: calc(1vh + 3.25em + env(safe-area-inset-bottom, 0px));
     font-weight: bold;
     text-shadow: 0 0 2px #000c;
     color: #fff;
