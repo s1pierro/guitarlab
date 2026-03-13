@@ -1,10 +1,9 @@
 // Service Worker pour la mise en cache des ressources de l'application
 
-const cacheName = 'gao-0.2';
+const cacheName = 'gao-0.3';
 const cacheFiles = [
-  /*/ pas de mise en cache en phase de dev ...
- // 'index.html',
-//  'manifest.json',*/
+  'index.html',
+  'manifest.json',
   'assets/icon.svg',
   'assets/icon-48.png',
   'assets/icon-96.png',
