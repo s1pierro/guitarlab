@@ -1391,8 +1391,8 @@ class Application {
         console.log (event);
         });
 
-        this.appbody.addEventListener('click', function (argument) {
-
+        this.appbody.addEventListener('click', function (e) {
+            if (this.ux.contains(e.target)) return;
             this.groundrender.raycast();
         }.bind(this), false);
 
