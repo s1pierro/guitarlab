@@ -780,29 +780,37 @@ class ChordWizard {
             allowInversion: true
         };
 
+        const makeCard = (v, chordName) => {
+            const card = document.createElement('div');
+            card.classList.add('voicing-card');
+            card.innerHTML =
+                '<div class="vc-frets">' + v.frets.join(' ') + '</div>' +
+                '<div class="vc-span">span ' + v.span + '</div>';
+            card.addEventListener('click', () => onApplyVoicing(v, chordName));
+            return card;
+        };
+
         const render = () => {
+            const chordName = state.root + chordtypes[state.chordTypeIndex].sym;
+
+            // grille principale
             grid.innerHTML = '';
             const voicings = this.buildVoicings(state.root, state.chordTypeIndex, {
                 maxSpan:        state.maxSpan,
                 minNotes:       state.minNotes,
-                maxNotes:        state.maxNotes,
-                allowInversion:  state.allowInversion
+                maxNotes:       state.maxNotes,
+                allowInversion: state.allowInversion
             });
-            const chordName = state.root + chordtypes[state.chordTypeIndex].sym;
             header.textContent = chordName + ' — ' + voicings.length + ' voicing' + (voicings.length > 1 ? 's' : '');
+            voicings.slice(0, 48).forEach(v => grid.appendChild(makeCard(v, chordName)));
 
-            voicings.slice(0, 48).forEach(v => {
-                const card = document.createElement('div');
-                card.classList.add('voicing-card');
-
-                const fretStr = v.frets.map(f => f === 'x' ? 'x' : f).join(' ');
-                card.innerHTML =
-                    '<div class="vc-frets">' + fretStr + '</div>' +
-                    '<div class="vc-span">span ' + v.span + '</div>';
-
-                card.addEventListener('click', () => onApplyVoicing(v, chordName));
-                grid.appendChild(card);
+            // section accords ouverts (même tonique + type, contraintes verrouillées)
+            openGrid.innerHTML = '';
+            const openVoicings = this.buildVoicings(state.root, state.chordTypeIndex, {
+                requireOpen: true, maxFret: 4, maxSpan: 4, minNotes: 3
             });
+            openSection.style.display = openVoicings.length ? '' : 'none';
+            openVoicings.forEach(v => openGrid.appendChild(makeCard(v, chordName)));
         };
 
         // ── header ──
@@ -882,49 +890,17 @@ class ChordWizard {
         grid.classList.add('catalog-grid');
         domdest.appendChild(grid);
 
-        render();
-
-        // ── section accords ouverts ──
+        // ── section accords ouverts (même sélection, contraintes verrouillées) ──
+        const openSection = document.createElement('div');
         const openTitle = document.createElement('div');
         openTitle.classList.add('catalog-section-title');
         openTitle.textContent = 'Accords ouverts';
-        domdest.appendChild(openTitle);
+        const openGrid = document.createElement('div');
+        openGrid.classList.add('catalog-grid');
+        openSection.append(openTitle, openGrid);
+        domdest.appendChild(openSection);
 
-        const OPEN_FILTERS = { requireOpen: true, maxFret: 4, maxSpan: 4, minNotes: 3 };
-        // familles pertinentes pour les accords ouverts — évite 600+ appels lourds
-        const OPEN_SYMS = new Set(['5', 'dim', 'sus2', 'sus4', '6', 'maj7', '7', '(add9)', '9', 'm', 'm6', 'm7', 'm9']);
-        const isOpenRelevant = (ct) =>
-            OPEN_SYMS.has(ct.sym) ||
-            (ct.sym === '' && ct.intervals.length === 3 && ct.intervals.includes('3') && ct.intervals.includes('5'));
-
-        chordtypes.forEach((ct, typeIdx) => {
-            if (!isOpenRelevant(ct)) return;
-            const cards = [];
-            notes.forEach(root => {
-                const vs = this.buildVoicings(root, typeIdx, OPEN_FILTERS);
-                vs.forEach(v => {
-                    const chordName = root + (ct.sym || 'M');
-                    const card = document.createElement('div');
-                    card.classList.add('voicing-card');
-                    card.innerHTML =
-                        '<div class="vc-frets">' + v.frets.join(' ') + '</div>' +
-                        '<div class="vc-span">' + chordName + '</div>';
-                    card.addEventListener('click', () => onApplyVoicing(v, chordName));
-                    cards.push(card);
-                });
-            });
-            if (!cards.length) return;
-
-            const sub = document.createElement('div');
-            sub.classList.add('catalog-sub-title');
-            sub.textContent = ct.sym || 'Majeur';
-            domdest.appendChild(sub);
-
-            const subgrid = document.createElement('div');
-            subgrid.classList.add('catalog-grid');
-            cards.forEach(c => subgrid.appendChild(c));
-            domdest.appendChild(subgrid);
-        });
+        render();
     }
 }
 class Cameraman {
