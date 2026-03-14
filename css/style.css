@@ -698,7 +698,7 @@ div.statebar {
 }
 .catalog-positions {
     overflow-y: auto;
-    max-height: 55vh;
+    max-height: 14em;
 }
 .catalog-grid {
     display: flex;
