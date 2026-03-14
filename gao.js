@@ -1251,10 +1251,19 @@ class Application {
         );
         this.analyserside = document.createElement('div');
         this.analyserside.id = 'analyser-side';
-        this.appbody.appendChild (this.analyserside);
+        this.appbody.appendChild(this.analyserside);
+
+        this.onairchord = document.createElement('div');
+        this.onairchord.id = 'onair-chord';
+        this.analyserside.appendChild(this.onairchord);
+
+        this.chordlibrary = document.createElement('div');
+        this.chordlibrary.id = 'chord-library';
+        this.analyserside.appendChild(this.chordlibrary);
+
         this.favctnr = document.createElement('div');
         this.favctnr.id = 'fav-ctnr';
-        this.appbody.appendChild(this.favctnr);
+        this.chordlibrary.appendChild(this.favctnr);
 
         this.neckside = document.createElement('div');
         this.neckside.id = 'neck-side';
@@ -1353,7 +1362,7 @@ class Application {
             for (let i = 0; i < this.computedguitar.strings.length; i++) {
                 this.computedguitar.strings[i].interval = stringIntervals[i];
             }
-            this.chordwizard.print(this.analyserside);
+            this.chordwizard.print(this.onairchord);
             this.pluckpad.update();
         };
         this.model = new GuitarModel(stringNames, onStateChange);
@@ -1377,7 +1386,7 @@ class Application {
         this.catalogdetails.appendChild(catalogsummary);
         this.catalogcontent = document.createElement('div');
         this.catalogdetails.appendChild(this.catalogcontent);
-        this.analyserside.appendChild(this.catalogdetails);
+        this.chordlibrary.appendChild(this.catalogdetails);
 
         this.catalogdetails.addEventListener('toggle', () => {
             if (this.catalogdetails.open) {

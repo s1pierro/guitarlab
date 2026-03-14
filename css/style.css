@@ -720,3 +720,12 @@ div.statebar {
 .catalog-grid {
     max-height: 40vh;
 }
+
+#onair-chord {
+    flex-shrink: 0;
+}
+#chord-library {
+    flex: 1;
+    overflow-y: auto;
+    border-top: 1px solid #e0e0e0;
+}
