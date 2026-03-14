@@ -826,7 +826,7 @@ class ChordWizard {
         chordtypes.forEach((ct, idx) => {
             const o = document.createElement('option');
             o.value = idx;
-            o.textContent = ct.sym || '(M)';
+            o.textContent = ct.sym || ct.intervals.join(' ');
             if (idx === state.chordTypeIndex) o.selected = true;
             typeSel.appendChild(o);
         });
