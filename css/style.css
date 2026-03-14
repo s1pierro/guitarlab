@@ -670,11 +670,15 @@ div.statebar {
     margin-top: 0.5em;
 }
 .catalog-sub-title {
+    position: sticky;
+    top: 0;
     font-size: 0.8em;
     font-weight: bold;
     padding: 0.4em 0.5em 0.15em;
-    color: #777;
-    border-top: 1px solid #eee;
+    color: #555;
+    background: #f0f0f0;
+    border-top: 1px solid #ddd;
+    z-index: 1;
 }
 .catalog-filters {
     display: flex;
