@@ -854,10 +854,16 @@ class ChordWizard {
                 minFret:        state.minFret,
                 maxFret:        state.maxFret
             });
-            const validated = voicings.filter(v => {
-                const match = this._guessFromVoicing(v);
-                return match && match.root === state.root && match.chordtypeindex === state.chordTypeIndex;
-            });
+            const minPressed = v => {
+                const pressed = v.frets.filter(f => f !== 'x' && f > 0);
+                return pressed.length ? Math.min(...pressed) : 0;
+            };
+            const validated = voicings
+                .filter(v => {
+                    const match = this._guessFromVoicing(v);
+                    return match && match.root === state.root && match.chordtypeindex === state.chordTypeIndex;
+                })
+                .sort((a, b) => minPressed(a) - minPressed(b));
             header.textContent = chordName + ' — ' + validated.length + ' voicing' + (validated.length > 1 ? 's' : '');
             validated.slice(0, 48).forEach(v => grid.appendChild(makeCard(v, chordName)));
 
