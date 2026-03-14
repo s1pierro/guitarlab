@@ -376,19 +376,19 @@ class ChordPinBoard {
     update () {
         this.domctnr.innerHTML = '';
         for (let i = 0; i < this.pinnedchords.length; i++) {
-            let achord = document.createElement('div');
-            achord.classList.add ('pinned-chord');
-            //-console.log(this.pinnedchords[i]);
-            let inner = this.pinnedchords[i].name+'<br><span class="small-2">'+this.pinnedchords[i].frets.join(' ')+'</span>';
-            achord.innerHTML = inner;
-            let ii = i;
-            achord.addEventListener('click', function () {
-                //-console.log(this);
-                //-console.log(ii);
-                //-console.log(this.pinnedchords);
-                this.pushchord (this.pinnedchords[ii]);
-            }.bind(this), true);
-            this.domctnr.appendChild(achord);
+            const chord = this.pinnedchords[i];
+            const card = document.createElement('div');
+            card.classList.add('voicing-card');
+            card.innerHTML =
+                '<div class="vc-frets">' + chord.frets.join(' ') + '</div>' +
+                '<div class="vc-span">' + chord.name + '</div>';
+            card.addEventListener('click', () => this.pushchord(chord), true);
+            const del = document.createElement('span');
+            del.classList.add('vc-del');
+            del.textContent = '×';
+            del.addEventListener('click', (e) => { e.stopPropagation(); this.kickchord(chord); }, true);
+            card.appendChild(del);
+            this.domctnr.appendChild(card);
         }
         this.onStateChange();
     }

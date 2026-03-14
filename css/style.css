@@ -673,6 +673,7 @@ div.statebar {
     max-height: 55vh;
 }
 .voicing-card {
+    position: relative;
     background: #fff;
     border: 1px solid #ddd;
     border-radius: 0.4em;
@@ -696,6 +697,16 @@ div.statebar {
     color: #888;
     margin-top: 0.15em;
 }
+.vc-del {
+    position: absolute;
+    top: 0.1em;
+    right: 0.25em;
+    font-size: 0.75em;
+    color: #bbb;
+    line-height: 1;
+    cursor: pointer;
+}
+.vc-del:active { color: #e44; }
 
 #catalog-details,
 #pinboard-details {
