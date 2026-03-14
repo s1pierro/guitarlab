@@ -274,7 +274,7 @@ class ComputedGuitar {
     fingerprintsrender () {
 
         let tl = document.getElementById('touch-layer');
-        tl.innerHTML = 'print layer';
+        tl.innerHTML = '';
         if (!this.groundrender.strings || !this.groundrender.strings[0]) return;
 
         for (var j = 0; j < this.strings.length; j++) {
@@ -1269,9 +1269,11 @@ class GroundRender {
             var percentComplete = xhr.loaded / xhr.total * 100;
             console.log( Math.round(percentComplete, 2) + '%' );
             var elem = document.getElementById('app-stamp');
-            elem.textContent = Math.round(percentComplete, 2) + ' %';
-             //       this.appstamp.innerHTML = '<i class="icon-sliders"></i> Guitar Lab';
-
+            if (percentComplete < 100) {
+                elem.textContent = Math.round(percentComplete) + ' %';
+            } else {
+                elem.innerHTML = '<i class="icon-sliders"></i> Guitar Lab';
+            }
         }
     }
     onError ( xhr ) {
