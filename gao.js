@@ -773,6 +773,47 @@ class ChordWizard {
         return unique;
     }
 
+    // Reconstruction non-mutante : retourne {root, chordtypeindex} du meilleur score pour un voicing
+    _guessFromVoicing (voicing) {
+        if (!this._instrument) return null;
+        const { tuning } = this._instrument;
+
+        const heldNotes = [];
+        voicing.frets.forEach((fret, i) => {
+            if (fret === 'x') return;
+            const openIdx = allnotes.indexOf(tuning[i]);
+            const octavednote = allnotes[openIdx + fret];
+            if (!octavednote) return;
+            heldNotes.push({ basenote: octavednote.replace(/\d/g, ''), octavednote });
+        });
+        if (heldNotes.length === 0) return null;
+
+        const basenotes = [...new Set(heldNotes.map(n => n.basenote))];
+        let best = null;
+
+        for (const root of basenotes) {
+            const its = basenotes.map(n => this.getinterval(root, n));
+            for (let k = 0; k < chordtypes.length; k++) {
+                const tableau1  = chordtypes[k].intervals;
+                const required  = chordtypes[k].musthave;
+                const missing   = tableau1.filter(v => !its.includes(v));
+                const mismatch  = its.filter(v => !tableau1.includes(v));
+                if (mismatch.length > 0) continue;
+                const fail = required.filter(v => missing.includes(v));
+                if (fail.length > 0) continue;
+
+                let score = tableau1.filter(v => its.includes(v)).length;
+                if (missing.length > 0) score *= 0.8;
+                if (missing.length > 1) score *= 0.8;
+                if (its[0] === 'root') score *= 1.1;
+
+                if (!best || score > best.score)
+                    best = { score, root, chordtypeindex: k };
+            }
+        }
+        return best;
+    }
+
     printCatalog (domdest, onApplyVoicing = () => {}) {
         if (!this._instrument) return;
         domdest.innerHTML = '';
@@ -813,14 +854,21 @@ class ChordWizard {
                 minFret:        state.minFret,
                 maxFret:        state.maxFret
             });
-            header.textContent = chordName + ' — ' + voicings.length + ' voicing' + (voicings.length > 1 ? 's' : '');
-            voicings.slice(0, 48).forEach(v => grid.appendChild(makeCard(v, chordName)));
+            const validated = voicings.filter(v => {
+                const match = this._guessFromVoicing(v);
+                return match && match.root === state.root && match.chordtypeindex === state.chordTypeIndex;
+            });
+            header.textContent = chordName + ' — ' + validated.length + ' voicing' + (validated.length > 1 ? 's' : '');
+            validated.slice(0, 48).forEach(v => grid.appendChild(makeCard(v, chordName)));
 
             // section accords ouverts (même tonique + type, contraintes verrouillées)
             openGrid.innerHTML = '';
             const openVoicings = this.buildVoicings(state.root, state.chordTypeIndex, {
                 requireOpen: true, maxFret: 4, maxSpan: 4, minNotes: 3,
                 allowInversion: false, noInteriorMutes: true
+            }).filter(v => {
+                const match = this._guessFromVoicing(v);
+                return match && match.root === state.root && match.chordtypeindex === state.chordTypeIndex;
             });
             openSection.style.display = openVoicings.length ? '' : 'none';
             openVoicings.forEach(v => openGrid.appendChild(makeCard(v, chordName)));
