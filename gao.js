@@ -660,9 +660,10 @@ class ChordWizard {
         const minNotes       = filters.minNotes       ?? 3;
         const maxNotes       = filters.maxNotes       ?? tuning.length;
         const musthave       = filters.musthave       ?? [];
-        const allowInversion = filters.allowInversion ?? true;
-        const requireOpen    = filters.requireOpen    ?? false;
-        const maxFret        = filters.maxFret        ?? nfrets;
+        const allowInversion   = filters.allowInversion   ?? true;
+        const requireOpen      = filters.requireOpen      ?? false;
+        const maxFret          = filters.maxFret          ?? nfrets;
+        const noInteriorMutes  = filters.noInteriorMutes  ?? false;
 
         const chordDef = chordtypes[chordTypeIndex];
         if (!chordDef) return [];
@@ -719,6 +720,11 @@ class ChordWizard {
                     }
                 }
                 if (requireOpen && !current.some(f => f === 0)) return;
+                if (noInteriorMutes) {
+                    const first = current.findIndex(f => f !== 'x');
+                    const last  = current.length - 1 - [...current].reverse().findIndex(f => f !== 'x');
+                    if (first !== -1 && current.slice(first, last + 1).some(f => f === 'x')) return;
+                }
                 voicings.push({ frets: [...current], notes: [...noteSet], intervals: voicingIntervals, span });
                 return;
             }
@@ -807,7 +813,8 @@ class ChordWizard {
             // section accords ouverts (même tonique + type, contraintes verrouillées)
             openGrid.innerHTML = '';
             const openVoicings = this.buildVoicings(state.root, state.chordTypeIndex, {
-                requireOpen: true, maxFret: 4, maxSpan: 4, minNotes: 3
+                requireOpen: true, maxFret: 4, maxSpan: 4, minNotes: 3,
+                allowInversion: false, noInteriorMutes: true
             });
             openSection.style.display = openVoicings.length ? '' : 'none';
             openVoicings.forEach(v => openGrid.appendChild(makeCard(v, chordName)));
