@@ -865,7 +865,24 @@ class ChordWizard {
                 })
                 .sort((a, b) => minPressed(a) - minPressed(b));
             header.textContent = chordName + ' — ' + validated.length + ' voicing' + (validated.length > 1 ? 's' : '');
-            validated.slice(0, 48).forEach(v => grid.appendChild(makeCard(v, chordName)));
+
+            // groupement par position (minPressed)
+            const groups = new Map();
+            validated.forEach(v => {
+                const pos = minPressed(v);
+                if (!groups.has(pos)) groups.set(pos, []);
+                groups.get(pos).push(v);
+            });
+            groups.forEach((vs, pos) => {
+                const sub = document.createElement('div');
+                sub.classList.add('catalog-sub-title');
+                sub.textContent = pos === 0 ? 'Position ouverte' : 'Position ' + pos;
+                grid.appendChild(sub);
+                const row = document.createElement('div');
+                row.classList.add('catalog-grid');
+                vs.forEach(v => row.appendChild(makeCard(v, chordName)));
+                grid.appendChild(row);
+            });
 
             // section accords ouverts (même tonique + type, contraintes verrouillées)
             openGrid.innerHTML = '';
@@ -988,7 +1005,7 @@ class ChordWizard {
 
         // ── grille explorateur ──
         const grid = document.createElement('div');
-        grid.classList.add('catalog-grid');
+        grid.classList.add('catalog-positions');
         domdest.appendChild(grid);
 
         // ── section accords ouverts (même sélection, contraintes verrouillées) ──

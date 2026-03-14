@@ -696,13 +696,15 @@ div.statebar {
     align-items: center;
     gap: 0.25em;
 }
+.catalog-positions {
+    overflow-y: auto;
+    max-height: 55vh;
+}
 .catalog-grid {
     display: flex;
     flex-wrap: wrap;
     gap: 0.4em;
-    padding: 0.4em 0.5em;
-    overflow-y: auto;
-    max-height: 55vh;
+    padding: 0.3em 0.5em 0.5em;
 }
 .voicing-card {
     position: relative;
@@ -764,9 +766,6 @@ div.statebar {
 #catalog-details[open] summary::before,
 #pinboard-details[open] summary::before {
     content: '▾ ';
-}
-.catalog-grid {
-    max-height: 40vh;
 }
 
 #onair-chord {
