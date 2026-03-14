@@ -1423,6 +1423,7 @@ class Application {
                     (voicing) => {
                         for (let i = 0; i < voicing.frets.length; i++)
                             this.computedguitar.strings[i].forcehold(voicing.frets[i]);
+                        this.groundrender.render();
                     }
                 );
             }
