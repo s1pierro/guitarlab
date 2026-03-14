@@ -1573,7 +1573,7 @@ class Application {
                 this.computedguitar.strings[i].interval = stringIntervals[i];
             }
             this.chordwizard.print(this.onairchord);
-            this.pluckpad.update();
+            if (this.pluckpad) this.pluckpad.update();
         };
         this.model = new GuitarModel(stringNames, onStateChange);
         this.computedguitar = new ComputedGuitar(sguitar, this.neckboard, this.groundrender, this.model);
