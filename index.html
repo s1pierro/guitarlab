@@ -48,15 +48,19 @@
             overflow: hidden;
         }
         #start {
+            position: fixed;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             width: 100vw;
             height: 100vh;
-            background: radial-gradient(ellipse at center, #2d1b4e 0%, #0a0a1a 70%);
+            background: radial-gradient(ellipse at center, #2d1b4eaa 0%, #0a0a1acc 70%);
             cursor: pointer;
+            z-index: 100;
+            transition: opacity 0.6s ease;
         }
+        #start.dissolve { opacity: 0; pointer-events: none; }
         div#start > img {
             width: min(42vw, 42vh);
             height: auto;
@@ -69,6 +73,10 @@
             font-size: 0.75em;
             letter-spacing: 0.35em;
             text-transform: uppercase;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+        #start-hint.ready {
             animation: blink 2.5s ease-in-out infinite;
         }
         @keyframes pulse {

@@ -1008,10 +1008,11 @@ class Cameraman {
 }
 
 class GroundRender {
-    constructor (domdest, onFretClick = () => {}, onAfterRender = () => {}) {
+    constructor (domdest, onFretClick = () => {}, onAfterRender = () => {}, onReady = () => {}) {
 
         this.onFretClick = onFretClick;
         this.onAfterRender = onAfterRender;
+        this.onReady = onReady;
         if ( ! navigator.gpu && ! window.WebGLRenderingContext ) { alert('WebGL non supporté par ce navigateur.'); return; }
         this.statebar = document.getElementById('app-stamp');
         this.domdest = domdest;
@@ -1165,6 +1166,7 @@ class GroundRender {
 
                 this.scene.add( object );
                 this.render();
+                this.onReady();
 
             }.bind(this), this.onProgress, this.onError);
 
@@ -1314,8 +1316,7 @@ class GroundRender {
 }
 // la classe application utilisera différentes instances des objets précédents. le lancement complet de l'application intervient a l'appel de son constructeur.
 class Application {
-  constructor () {
-        Tone.start();
+  constructor (onReady = () => {}) {
         this.appbody = document.createElement('div');
         this.appbody.id = 'app-body';
         document.body.appendChild (this.appbody);
@@ -1337,7 +1338,8 @@ class Application {
         this.groundrender = new GroundRender(
             this.renderlayer,
             (stringIndex, fret) => this.computedguitar.strings[stringIndex].hold(fret),
-            () => { if (this.computedguitar) this.computedguitar.fingerprintsrender(); }
+            () => { if (this.computedguitar) this.computedguitar.fingerprintsrender(); },
+            onReady
         );
         this.ux = document.createElement('div');
         this.ux.id = 'ux';
@@ -1548,10 +1550,17 @@ class Application {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    const useraction = document.getElementById('start');
-    useraction.addEventListener('click', function() {
-        this.remove();
-        window.application = new Application();
-        window.application.start();
+    const splash = document.getElementById('start');
+    const hint   = document.getElementById('start-hint');
+
+    // charge l'app immédiatement en arrière-plan
+    window.application = new Application(() => {
+        hint.classList.add('ready');
+    });
+
+    splash.addEventListener('click', () => {
+        Tone.start();
+        splash.classList.add('dissolve');
+        splash.addEventListener('transitionend', () => splash.remove(), { once: true });
     }, true);
 });
