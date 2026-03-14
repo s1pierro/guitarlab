@@ -85,6 +85,16 @@
     align-items: center;
     padding: 0 0.25em;
 }
+#ux-brand {
+    padding: 0.5em 0.75em 0.4em;
+    font-size: 0.9em;
+    font-weight: bold;
+    letter-spacing: 0.08em;
+    color: #ffffffcc;
+    text-shadow: 0 0 8px #7c3aed88;
+    border-bottom: 1px solid #ffffff11;
+    flex-shrink: 0;
+}
 #app-stamp {
     position: absolute;
     display: flex;

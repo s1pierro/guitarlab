@@ -1344,6 +1344,11 @@ class Application {
         this.ux.id = 'ux';
         this.appbody.appendChild(this.ux);
 
+        const uxbrand = document.createElement('div');
+        uxbrand.id = 'ux-brand';
+        uxbrand.innerHTML = '<i class="icon-sliders"></i> GuitarLab';
+        this.ux.appendChild(uxbrand);
+
         this.onairchord = document.createElement('div');
         this.onairchord.id = 'onair-chord';
         this.ux.appendChild(this.onairchord);
