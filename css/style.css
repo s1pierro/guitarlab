@@ -644,6 +644,21 @@ div.statebar {
     padding: 0.4em 0.5em;
     color: #333;
 }
+.catalog-section-title {
+    font-weight: bold;
+    font-size: 0.95em;
+    padding: 0.6em 0.5em 0.3em;
+    color: #333;
+    border-top: 2px solid #ccc;
+    margin-top: 0.5em;
+}
+.catalog-sub-title {
+    font-size: 0.8em;
+    font-weight: bold;
+    padding: 0.4em 0.5em 0.15em;
+    color: #777;
+    border-top: 1px solid #eee;
+}
 .catalog-filters {
     display: flex;
     flex-wrap: wrap;

@@ -661,6 +661,8 @@ class ChordWizard {
         const maxNotes       = filters.maxNotes       ?? tuning.length;
         const musthave       = filters.musthave       ?? [];
         const allowInversion = filters.allowInversion ?? true;
+        const requireOpen    = filters.requireOpen    ?? false;
+        const maxFret        = filters.maxFret        ?? nfrets;
 
         const chordDef = chordtypes[chordTypeIndex];
         if (!chordDef) return [];
@@ -681,7 +683,7 @@ class ChordWizard {
         const candidates = tuning.map(openNote => {
             const openIdx = allnotes.indexOf(openNote);
             const list = ['x'];
-            for (let f = 0; f <= nfrets; f++) {
+            for (let f = 0; f <= Math.min(nfrets, maxFret); f++) {
                 const idx = openIdx + f;
                 if (idx >= allnotes.length) break;
                 const n = allnotes[idx].replace(/\d/g, '');
@@ -716,6 +718,7 @@ class ChordWizard {
                         if (bassNote !== root) return;
                     }
                 }
+                if (requireOpen && !current.some(f => f === 0)) return;
                 voicings.push({ frets: [...current], notes: [...noteSet], intervals: voicingIntervals, span });
                 return;
             }
@@ -874,12 +877,47 @@ class ChordWizard {
         filters.append(rootSel, typeSel, spanLabel, notesLabel, invLabel);
         domdest.appendChild(filters);
 
-        // ── grille ──
+        // ── grille explorateur ──
         const grid = document.createElement('div');
         grid.classList.add('catalog-grid');
         domdest.appendChild(grid);
 
         render();
+
+        // ── section accords ouverts ──
+        const openTitle = document.createElement('div');
+        openTitle.classList.add('catalog-section-title');
+        openTitle.textContent = 'Accords ouverts';
+        domdest.appendChild(openTitle);
+
+        const OPEN_FILTERS = { requireOpen: true, maxFret: 4, maxSpan: 4, minNotes: 3 };
+        chordtypes.forEach((ct, typeIdx) => {
+            const cards = [];
+            notes.forEach(root => {
+                const vs = this.buildVoicings(root, typeIdx, OPEN_FILTERS);
+                vs.forEach(v => {
+                    const chordName = root + ct.sym;
+                    const card = document.createElement('div');
+                    card.classList.add('voicing-card');
+                    card.innerHTML =
+                        '<div class="vc-frets">' + v.frets.join(' ') + '</div>' +
+                        '<div class="vc-span">' + chordName + '</div>';
+                    card.addEventListener('click', () => onApplyVoicing(v, chordName));
+                    cards.push(card);
+                });
+            });
+            if (!cards.length) return;
+
+            const sub = document.createElement('div');
+            sub.classList.add('catalog-sub-title');
+            sub.textContent = ct.sym || ct.intervals.join(' ');
+            domdest.appendChild(sub);
+
+            const subgrid = document.createElement('div');
+            subgrid.classList.add('catalog-grid');
+            cards.forEach(c => subgrid.appendChild(c));
+            domdest.appendChild(subgrid);
+        });
     }
 }
 class Cameraman {
