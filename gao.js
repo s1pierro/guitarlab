@@ -891,12 +891,19 @@ class ChordWizard {
         domdest.appendChild(openTitle);
 
         const OPEN_FILTERS = { requireOpen: true, maxFret: 4, maxSpan: 4, minNotes: 3 };
+        // familles pertinentes pour les accords ouverts — évite 600+ appels lourds
+        const OPEN_SYMS = new Set(['5', 'dim', 'sus2', 'sus4', '6', 'maj7', '7', '(add9)', '9', 'm', 'm6', 'm7', 'm9']);
+        const isOpenRelevant = (ct) =>
+            OPEN_SYMS.has(ct.sym) ||
+            (ct.sym === '' && ct.intervals.length === 3 && ct.intervals.includes('3') && ct.intervals.includes('5'));
+
         chordtypes.forEach((ct, typeIdx) => {
+            if (!isOpenRelevant(ct)) return;
             const cards = [];
             notes.forEach(root => {
                 const vs = this.buildVoicings(root, typeIdx, OPEN_FILTERS);
                 vs.forEach(v => {
-                    const chordName = root + ct.sym;
+                    const chordName = root + (ct.sym || 'M');
                     const card = document.createElement('div');
                     card.classList.add('voicing-card');
                     card.innerHTML =
@@ -910,7 +917,7 @@ class ChordWizard {
 
             const sub = document.createElement('div');
             sub.classList.add('catalog-sub-title');
-            sub.textContent = ct.sym || ct.intervals.join(' ');
+            sub.textContent = ct.sym || 'Majeur';
             domdest.appendChild(sub);
 
             const subgrid = document.createElement('div');
