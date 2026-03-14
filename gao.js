@@ -664,6 +664,7 @@ class ChordWizard {
         const requireOpen      = filters.requireOpen      ?? false;
         const maxFret          = filters.maxFret          ?? nfrets;
         const noInteriorMutes  = filters.noInteriorMutes  ?? false;
+        const minFret          = filters.minFret          ?? 0;
 
         const chordDef = chordtypes[chordTypeIndex];
         if (!chordDef) return [];
@@ -685,6 +686,7 @@ class ChordWizard {
             const openIdx = allnotes.indexOf(openNote);
             const list = ['x'];
             for (let f = 0; f <= Math.min(nfrets, maxFret); f++) {
+                if (f > 0 && f < minFret) continue;
                 const idx = openIdx + f;
                 if (idx >= allnotes.length) break;
                 const n = allnotes[idx].replace(/\d/g, '');
@@ -777,13 +779,16 @@ class ChordWizard {
         domdest.innerHTML = '';
 
         // ── état des filtres ──
+        const nfrets = this._instrument.frets;
         let state = {
             root: notes[0],
             chordTypeIndex: 2,   // majeur par défaut
             maxSpan: 4,
             minNotes: 3,
             maxNotes: this._instrument.tuning.length,
-            allowInversion: true
+            allowInversion: true,
+            minFret: 0,
+            maxFret: nfrets
         };
 
         const makeCard = (v, chordName) => {
@@ -805,7 +810,9 @@ class ChordWizard {
                 maxSpan:        state.maxSpan,
                 minNotes:       state.minNotes,
                 maxNotes:       state.maxNotes,
-                allowInversion: state.allowInversion
+                allowInversion: state.allowInversion,
+                minFret:        state.minFret,
+                maxFret:        state.maxFret
             });
             header.textContent = chordName + ' — ' + voicings.length + ' voicing' + (voicings.length > 1 ? 's' : '');
             voicings.slice(0, 48).forEach(v => grid.appendChild(makeCard(v, chordName)));
@@ -889,7 +896,41 @@ class ChordWizard {
         invLabel.appendChild(invCheck);
         invLabel.append(' renversements');
 
-        filters.append(rootSel, typeSel, spanLabel, notesLabel, invLabel);
+        // frette min
+        const minFretLabel = document.createElement('label');
+        minFretLabel.textContent = 'frette min ';
+        const minFretSel = document.createElement('select');
+        for (let f = 0; f <= nfrets; f++) {
+            const o = document.createElement('option');
+            o.value = f; o.textContent = f === 0 ? '—' : f;
+            if (f === state.minFret) o.selected = true;
+            minFretSel.appendChild(o);
+        }
+        minFretSel.addEventListener('change', () => {
+            state.minFret = parseInt(minFretSel.value);
+            if (state.minFret > state.maxFret) { state.maxFret = state.minFret; maxFretSel.value = state.maxFret; }
+            render();
+        });
+        minFretLabel.appendChild(minFretSel);
+
+        // frette max
+        const maxFretLabel = document.createElement('label');
+        maxFretLabel.textContent = 'frette max ';
+        const maxFretSel = document.createElement('select');
+        for (let f = 0; f <= nfrets; f++) {
+            const o = document.createElement('option');
+            o.value = f; o.textContent = f === 0 ? '—' : f;
+            if (f === state.maxFret) o.selected = true;
+            maxFretSel.appendChild(o);
+        }
+        maxFretSel.addEventListener('change', () => {
+            state.maxFret = parseInt(maxFretSel.value);
+            if (state.maxFret < state.minFret) { state.minFret = state.maxFret; minFretSel.value = state.minFret; }
+            render();
+        });
+        maxFretLabel.appendChild(maxFretSel);
+
+        filters.append(rootSel, typeSel, spanLabel, notesLabel, invLabel, minFretLabel, maxFretLabel);
         domdest.appendChild(filters);
 
         // ── grille explorateur ──
