@@ -1370,16 +1370,26 @@ class Application {
             frets: nfret
         });
 
-        this.catalogside = document.createElement('div');
-        this.catalogside.id = 'catalog-side';
-        this.appbody.appendChild(this.catalogside);
-        this.chordwizard.printCatalog(
-            this.catalogside,
-            (voicing, chordName) => {
-                for (let i = 0; i < voicing.frets.length; i++)
-                    this.computedguitar.strings[i].forcehold(voicing.frets[i]);
+        this.catalogdetails = document.createElement('details');
+        this.catalogdetails.id = 'catalog-details';
+        const catalogsummary = document.createElement('summary');
+        catalogsummary.innerHTML = '<i class="icon-book"></i> Catalogue';
+        this.catalogdetails.appendChild(catalogsummary);
+        this.catalogcontent = document.createElement('div');
+        this.catalogdetails.appendChild(this.catalogcontent);
+        this.analyserside.appendChild(this.catalogdetails);
+
+        this.catalogdetails.addEventListener('toggle', () => {
+            if (this.catalogdetails.open) {
+                this.chordwizard.printCatalog(
+                    this.catalogcontent,
+                    (voicing) => {
+                        for (let i = 0; i < voicing.frets.length; i++)
+                            this.computedguitar.strings[i].forcehold(voicing.frets[i]);
+                    }
+                );
             }
-        );
+        });
 
         this.pluckpad = new PluckPad(this.computedguitar.strings, this.appbody);
     }

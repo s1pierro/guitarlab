@@ -697,16 +697,26 @@ div.statebar {
     margin-top: 0.15em;
 }
 
-#catalog-side {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 42vw;
-    max-width: 320px;
-    height: 100vh;
-    overflow-y: auto;
-    background: #ffffffcc;
-    backdrop-filter: blur(6px);
-    z-index: 20;
-    border-right: 1px solid #ddd;
+#catalog-details {
+    margin-top: 0.4em;
+    border-top: 1px solid #ddd;
+}
+#catalog-details summary {
+    cursor: pointer;
+    padding: 0.5em 0.5em;
+    font-size: 0.85em;
+    font-weight: bold;
+    list-style: none;
+    user-select: none;
+}
+#catalog-details summary::-webkit-details-marker { display: none; }
+#catalog-details summary::before {
+    content: '▸ ';
+    font-size: 0.75em;
+}
+#catalog-details[open] summary::before {
+    content: '▾ ';
+}
+.catalog-grid {
+    max-height: 40vh;
 }
