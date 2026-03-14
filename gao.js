@@ -645,6 +645,220 @@ class ChordWizard {
         if (it < 0) it += 12;
         return intervals[it];
     }
+
+    // ── Catalogue ────────────────────────────────────────────────
+
+    setInstrument (def) {
+        // def = { tuning: ['E2','A2',...], frets: 18 }
+        this._instrument = def;
+    }
+
+    buildVoicings (root, chordTypeIndex, filters = {}) {
+        if (!this._instrument) return [];
+        const { tuning, frets: nfrets } = this._instrument;
+        const maxSpan   = filters.maxSpan  ?? 4;
+        const minNotes  = filters.minNotes ?? 3;
+        const maxNotes  = filters.maxNotes ?? tuning.length;
+        const musthave  = filters.musthave ?? [];
+
+        const chordDef = chordtypes[chordTypeIndex];
+        if (!chordDef) return [];
+
+        // notes de l'accord pour cette tonique
+        const rootIdx    = notes.indexOf(root);
+        const chordNotes = chordDef.intervals.map(iv => {
+            const semi = new Interval(iv).semitones;
+            return notes[(rootIdx + semi) % 12];
+        });
+        // intervalles requis → notes concrètes
+        const musthaveNotes = musthave.map(iv => {
+            const semi = new Interval(iv).semitones;
+            return notes[(rootIdx + semi) % 12];
+        });
+
+        // candidats par corde : frettes jouables + 'x'
+        const candidates = tuning.map(openNote => {
+            const openIdx = allnotes.indexOf(openNote);
+            const list = ['x'];
+            for (let f = 0; f <= nfrets; f++) {
+                const idx = openIdx + f;
+                if (idx >= allnotes.length) break;
+                const n = allnotes[idx].replace(/\d/g, '');
+                if (chordNotes.includes(n)) list.push(f);
+            }
+            return list;
+        });
+
+        const voicings = [];
+
+        const combine = (si, current, activeFrets, noteSet) => {
+            if (si === tuning.length) {
+                if (noteSet.size < minNotes || noteSet.size > maxNotes) return;
+                if (musthaveNotes.some(n => !noteSet.has(n))) return;
+                const span = activeFrets.length > 1
+                    ? Math.max(...activeFrets) - Math.min(...activeFrets)
+                    : 0;
+                if (span > maxSpan) return;
+                // intervalles du voicing
+                const voicingIntervals = current.map((f, i) => {
+                    if (f === 'x') return 'x';
+                    const openIdx = allnotes.indexOf(tuning[i]);
+                    const n = allnotes[openIdx + f].replace(/\d/g, '');
+                    return this.getinterval(root, n);
+                });
+                voicings.push({ frets: [...current], notes: [...noteSet], intervals: voicingIntervals, span });
+                return;
+            }
+
+            for (const fret of candidates[si]) {
+                const newActiveFrets = [...activeFrets];
+                const newNoteSet = new Set(noteSet);
+
+                if (fret !== 'x') {
+                    if (fret > 0) newActiveFrets.push(fret);
+                    const openIdx = allnotes.indexOf(tuning[si]);
+                    const n = allnotes[openIdx + fret].replace(/\d/g, '');
+                    newNoteSet.add(n);
+                    // élagage span anticipé
+                    if (newActiveFrets.length > 1) {
+                        const span = Math.max(...newActiveFrets) - Math.min(...newActiveFrets);
+                        if (span > maxSpan) continue;
+                    }
+                }
+
+                // élagage notes insuffisantes
+                const remaining = tuning.length - si - 1;
+                if (newNoteSet.size + remaining < minNotes) continue;
+
+                combine(si + 1, [...current, fret], newActiveFrets, newNoteSet);
+            }
+        };
+
+        combine(0, [], [], new Set());
+
+        // dédoublonnage par empreinte
+        const seen = new Set();
+        const unique = voicings.filter(v => {
+            const key = v.frets.join(',');
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        });
+
+        unique.sort((a, b) => {
+            if (a.span !== b.span) return a.span - b.span;
+            return a.frets.filter(f => f === 'x').length - b.frets.filter(f => f === 'x').length;
+        });
+
+        return unique;
+    }
+
+    printCatalog (domdest, onApplyVoicing = () => {}) {
+        if (!this._instrument) return;
+        domdest.innerHTML = '';
+
+        // ── état des filtres ──
+        let state = {
+            root: notes[0],
+            chordTypeIndex: 2,   // majeur par défaut
+            maxSpan: 4,
+            minNotes: 3,
+            maxNotes: this._instrument.tuning.length
+        };
+
+        const render = () => {
+            grid.innerHTML = '';
+            const voicings = this.buildVoicings(state.root, state.chordTypeIndex, {
+                maxSpan:  state.maxSpan,
+                minNotes: state.minNotes,
+                maxNotes: state.maxNotes
+            });
+            const chordName = state.root + chordtypes[state.chordTypeIndex].sym;
+            header.textContent = chordName + ' — ' + voicings.length + ' voicing' + (voicings.length > 1 ? 's' : '');
+
+            voicings.slice(0, 48).forEach(v => {
+                const card = document.createElement('div');
+                card.classList.add('voicing-card');
+
+                const fretStr = v.frets.map(f => f === 'x' ? 'x' : f).join(' ');
+                card.innerHTML =
+                    '<div class="vc-frets">' + fretStr + '</div>' +
+                    '<div class="vc-span">span ' + v.span + '</div>';
+
+                card.addEventListener('click', () => onApplyVoicing(v, chordName));
+                grid.appendChild(card);
+            });
+        };
+
+        // ── header ──
+        const header = document.createElement('div');
+        header.classList.add('catalog-header');
+        domdest.appendChild(header);
+
+        // ── filtres ──
+        const filters = document.createElement('div');
+        filters.classList.add('catalog-filters');
+
+        // sélecteur tonique
+        const rootSel = document.createElement('select');
+        notes.forEach(n => {
+            const o = document.createElement('option');
+            o.value = n; o.textContent = n;
+            if (n === state.root) o.selected = true;
+            rootSel.appendChild(o);
+        });
+        rootSel.addEventListener('change', () => { state.root = rootSel.value; render(); });
+
+        // sélecteur type d'accord
+        const typeSel = document.createElement('select');
+        chordtypes.forEach((ct, idx) => {
+            const o = document.createElement('option');
+            o.value = idx;
+            o.textContent = (state.root + ct.sym) || state.root;
+            if (idx === state.chordTypeIndex) o.selected = true;
+            typeSel.appendChild(o);
+        });
+        typeSel.addEventListener('change', () => { state.chordTypeIndex = parseInt(typeSel.value); render(); });
+
+        // span max
+        const spanLabel = document.createElement('label');
+        spanLabel.textContent = 'span ';
+        const spanSel = document.createElement('select');
+        [2,3,4,5,6].forEach(v => {
+            const o = document.createElement('option');
+            o.value = v; o.textContent = v;
+            if (v === state.maxSpan) o.selected = true;
+            spanSel.appendChild(o);
+        });
+        spanSel.addEventListener('change', () => { state.maxSpan = parseInt(spanSel.value); render(); });
+        spanLabel.appendChild(spanSel);
+
+        // nombre de notes
+        const notesLabel = document.createElement('label');
+        notesLabel.textContent = 'notes ';
+        const notesSel = document.createElement('select');
+        [['triade',3,3],['4 notes',4,4],['5 notes',5,5],['toutes',3,6]].forEach(([label, min, max]) => {
+            const o = document.createElement('option');
+            o.value = min + ',' + max; o.textContent = label;
+            if (min === state.minNotes && max === state.maxNotes) o.selected = true;
+            notesSel.appendChild(o);
+        });
+        notesSel.addEventListener('change', () => {
+            [state.minNotes, state.maxNotes] = notesSel.value.split(',').map(Number);
+            render();
+        });
+        notesLabel.appendChild(notesSel);
+
+        filters.append(rootSel, typeSel, spanLabel, notesLabel);
+        domdest.appendChild(filters);
+
+        // ── grille ──
+        const grid = document.createElement('div');
+        grid.classList.add('catalog-grid');
+        domdest.appendChild(grid);
+
+        render();
+    }
 }
 class Cameraman {
     constructor (onNeedRender = () => {}) {
@@ -1149,6 +1363,24 @@ class Application {
             onStateChange
         );
         this.chordwizard.mountPinBoard(this.favctnr);
+
+        // catalogue — instrument identique à la guitare virtuelle
+        this.chordwizard.setInstrument({
+            tuning: stringNames,
+            frets: nfret
+        });
+
+        this.catalogside = document.createElement('div');
+        this.catalogside.id = 'catalog-side';
+        this.appbody.appendChild(this.catalogside);
+        this.chordwizard.printCatalog(
+            this.catalogside,
+            (voicing, chordName) => {
+                for (let i = 0; i < voicing.frets.length; i++)
+                    this.computedguitar.strings[i].forcehold(voicing.frets[i]);
+            }
+        );
+
         this.pluckpad = new PluckPad(this.computedguitar.strings, this.appbody);
     }
     start () {

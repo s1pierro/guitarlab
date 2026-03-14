@@ -637,3 +637,76 @@ div.statebar {
     color: #c00;
 
 }
+/* ── Catalog ─────────────────────────────────────────────── */
+.catalog-header {
+    font-weight: bold;
+    font-size: 1em;
+    padding: 0.4em 0.5em;
+    color: #333;
+}
+.catalog-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4em;
+    padding: 0.3em 0.5em 0.5em;
+}
+.catalog-filters select {
+    font-family: inherit;
+    font-size: 0.8em;
+    padding: 0.2em 0.4em;
+    border: 1px solid #bbb;
+    border-radius: 0.3em;
+    background: #fff;
+}
+.catalog-filters label {
+    font-size: 0.8em;
+    display: flex;
+    align-items: center;
+    gap: 0.25em;
+}
+.catalog-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4em;
+    padding: 0.4em 0.5em;
+    overflow-y: auto;
+    max-height: 55vh;
+}
+.voicing-card {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 0.4em;
+    padding: 0.35em 0.5em;
+    cursor: pointer;
+    min-width: 5em;
+    text-align: center;
+    transition: background 0.15s;
+}
+.voicing-card:active {
+    background: #e0e8ff;
+}
+.vc-frets {
+    font-size: 0.85em;
+    font-weight: bold;
+    letter-spacing: 0.05em;
+    color: #222;
+}
+.vc-span {
+    font-size: 0.65em;
+    color: #888;
+    margin-top: 0.15em;
+}
+
+#catalog-side {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 42vw;
+    max-width: 320px;
+    height: 100vh;
+    overflow-y: auto;
+    background: #ffffffcc;
+    backdrop-filter: blur(6px);
+    z-index: 20;
+    border-right: 1px solid #ddd;
+}
