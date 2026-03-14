@@ -344,6 +344,8 @@ class ChordPinBoard {
     mount (domdest) {
         domdest.appendChild(this.domctnr);
     }
+    get chords () { return this.pinnedchords; }
+    set chords (list) { this.pinnedchords = list; this.update(); }
     pinchord (chord) {
       if ( this.has(chord))
         this.kickchord(chord);
@@ -1385,9 +1387,31 @@ class GroundRender {
         return stuff;
     }
 }
+class AppStorage {
+    constructor (ns = 'guitarlab') {
+        this.ns = ns;
+    }
+    _key (key) { return this.ns + ':' + key; }
+    get (key, fallback = null) {
+        try {
+            const raw = localStorage.getItem(this._key(key));
+            return raw !== null ? JSON.parse(raw) : fallback;
+        } catch { return fallback; }
+    }
+    set (key, value) {
+        try { localStorage.setItem(this._key(key), JSON.stringify(value)); }
+        catch { /* quota dépassé ou mode privé */ }
+    }
+    remove (key) {
+        try { localStorage.removeItem(this._key(key)); }
+        catch {}
+    }
+}
+
 // la classe application utilisera différentes instances des objets précédents. le lancement complet de l'application intervient a l'appel de son constructeur.
 class Application {
   constructor (onReady = () => {}) {
+        this.storage = new AppStorage();
         this.appbody = document.createElement('div');
         this.appbody.id = 'app-body';
         document.body.appendChild (this.appbody);
@@ -1438,6 +1462,18 @@ class Application {
         this.favctnr.id = 'fav-ctnr';
         this.pinboarddetails.appendChild(this.favctnr);
         this.chordlibrary.appendChild(this.pinboarddetails);
+
+        // ── restauration + persistance état des panneaux dépliables ──
+        const uxOpen = this.storage.get('ux-open', {});
+        const syncOpen = (el, key) => {
+            if (uxOpen[key] !== undefined) el.open = uxOpen[key];
+            el.addEventListener('toggle', () => {
+                const state = this.storage.get('ux-open', {});
+                state[key] = el.open;
+                this.storage.set('ux-open', state);
+            });
+        };
+        syncOpen(this.pinboarddetails, 'pinboard');
 
         this.neckside = document.createElement('div');
         this.neckside.id = 'neck-side';
@@ -1547,6 +1583,14 @@ class Application {
         );
         this.chordwizard.mountPinBoard(this.favctnr);
 
+        // ── restauration pinboard ──
+        const savedChords = this.storage.get('pinboard', []);
+        if (savedChords.length) this.chordwizard.chordpinboard.chords = savedChords;
+        // persistance pinboard à chaque mutation
+        this.chordwizard.chordpinboard.onStateChange = () => {
+            this.storage.set('pinboard', this.chordwizard.chordpinboard.chords);
+        };
+
         // catalogue — instrument identique à la guitare virtuelle
         this.chordwizard.setInstrument({
             tuning: stringNames,
@@ -1561,6 +1605,7 @@ class Application {
         this.catalogcontent = document.createElement('div');
         this.catalogdetails.appendChild(this.catalogcontent);
         this.chordlibrary.appendChild(this.catalogdetails);
+        syncOpen(this.catalogdetails, 'catalog');
 
         this.catalogdetails.addEventListener('toggle', () => {
             if (this.catalogdetails.open) {
