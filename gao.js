@@ -345,7 +345,11 @@ class ChordPinBoard {
         domdest.appendChild(this.domctnr);
     }
     get chords () { return this.pinnedchords; }
-    set chords (list) { this.pinnedchords = list; this.update(); }
+    set chords (list) {
+        this.pinnedchords = list.map(c => c instanceof Chord ? c :
+            new Chord(c.frets, c.name, c.root, c.type, c.desc, c.bass, c.notes, c.intervals));
+        this.update();
+    }
     pinchord (chord) {
       if ( this.has(chord))
         this.kickchord(chord);
@@ -816,22 +820,24 @@ class ChordWizard {
         return best;
     }
 
-    printCatalog (domdest, onApplyVoicing = () => {}) {
+    printCatalog (domdest, onApplyVoicing = () => {}, storage = null) {
         if (!this._instrument) return;
         domdest.innerHTML = '';
 
         // ── état des filtres ──
         const nfrets = this._instrument.frets;
+        const saved = storage ? storage.get('catalog-filters', {}) : {};
         let state = {
-            root: notes[0],
-            chordTypeIndex: 2,   // majeur par défaut
-            maxSpan: 4,
-            minNotes: 3,
-            maxNotes: this._instrument.tuning.length,
-            allowInversion: true,
-            minFret: 0,
-            maxFret: nfrets
+            root:           saved.root           ?? notes[0],
+            chordTypeIndex: saved.chordTypeIndex  ?? 2,   // majeur par défaut
+            maxSpan:        saved.maxSpan         ?? 4,
+            minNotes:       saved.minNotes        ?? 3,
+            maxNotes:       saved.maxNotes        ?? this._instrument.tuning.length,
+            allowInversion: saved.allowInversion  ?? true,
+            minFret:        saved.minFret         ?? 0,
+            maxFret:        saved.maxFret         ?? nfrets
         };
+        const saveState = () => { if (storage) storage.set('catalog-filters', state); };
 
         const makeCard = (v, chordName) => {
             const card = document.createElement('div');
@@ -916,7 +922,7 @@ class ChordWizard {
             if (n === state.root) o.selected = true;
             rootSel.appendChild(o);
         });
-        rootSel.addEventListener('change', () => { state.root = rootSel.value; render(); });
+        rootSel.addEventListener('change', () => { state.root = rootSel.value; saveState(); render(); });
 
         // sélecteur type d'accord
         const typeSel = document.createElement('select');
@@ -927,7 +933,7 @@ class ChordWizard {
             if (idx === state.chordTypeIndex) o.selected = true;
             typeSel.appendChild(o);
         });
-        typeSel.addEventListener('change', () => { state.chordTypeIndex = parseInt(typeSel.value); render(); });
+        typeSel.addEventListener('change', () => { state.chordTypeIndex = parseInt(typeSel.value); saveState(); render(); });
 
         // span max
         const spanLabel = document.createElement('label');
@@ -939,7 +945,7 @@ class ChordWizard {
             if (v === state.maxSpan) o.selected = true;
             spanSel.appendChild(o);
         });
-        spanSel.addEventListener('change', () => { state.maxSpan = parseInt(spanSel.value); render(); });
+        spanSel.addEventListener('change', () => { state.maxSpan = parseInt(spanSel.value); saveState(); render(); });
         spanLabel.appendChild(spanSel);
 
         // nombre de notes
@@ -954,7 +960,7 @@ class ChordWizard {
         });
         notesSel.addEventListener('change', () => {
             [state.minNotes, state.maxNotes] = notesSel.value.split(',').map(Number);
-            render();
+            saveState(); render();
         });
         notesLabel.appendChild(notesSel);
 
@@ -964,7 +970,7 @@ class ChordWizard {
         const invCheck = document.createElement('input');
         invCheck.type = 'checkbox';
         invCheck.checked = state.allowInversion;
-        invCheck.addEventListener('change', () => { state.allowInversion = invCheck.checked; render(); });
+        invCheck.addEventListener('change', () => { state.allowInversion = invCheck.checked; saveState(); render(); });
         invLabel.appendChild(invCheck);
         invLabel.append(' renversements');
 
@@ -981,7 +987,7 @@ class ChordWizard {
         minFretSel.addEventListener('change', () => {
             state.minFret = parseInt(minFretSel.value);
             if (state.minFret > state.maxFret) { state.maxFret = state.minFret; maxFretSel.value = state.maxFret; }
-            render();
+            saveState(); render();
         });
         minFretLabel.appendChild(minFretSel);
 
@@ -998,7 +1004,7 @@ class ChordWizard {
         maxFretSel.addEventListener('change', () => {
             state.maxFret = parseInt(maxFretSel.value);
             if (state.maxFret < state.minFret) { state.minFret = state.maxFret; minFretSel.value = state.minFret; }
-            render();
+            saveState(); render();
         });
         maxFretLabel.appendChild(maxFretSel);
 
@@ -1064,6 +1070,19 @@ class Cameraman {
     }
     update () {
         this.controls.update();
+    }
+    getView () {
+        const p = this.camera.position;
+        const t = this.controls.target;
+        return { pos: { x: p.x, y: p.y, z: p.z }, target: { x: t.x, y: t.y, z: t.z } };
+    }
+    setView (v) {
+        this.camera.position.set(v.pos.x, v.pos.y, v.pos.z);
+        this.controls.target.set(v.target.x, v.target.y, v.target.z);
+        this.controls.update();
+    }
+    onViewChange (cb) {
+        this.controls.addEventListener('change', cb);
     }
     resize (width, height) {
         this.camera.aspect = width / height / this.viewRatio;
@@ -1370,6 +1389,9 @@ class GroundRender {
     getScreenCoordinates(obj) {
         return this.cameraman.getScreenCoordinates(obj);
     }
+    getView ()       { return this.cameraman.getView(); }
+    setView (v)      { this.cameraman.setView(v); }
+    onViewChange (cb){ this.cameraman.onViewChange(cb); }
     stuffat (mouse) {
         let stuff = { c: null,  object: null };
         const raycaster = new THREE.Raycaster();
@@ -1412,6 +1434,7 @@ class AppStorage {
 class Application {
   constructor (onReady = () => {}) {
         this.storage = new AppStorage();
+        this._orientKey = () => window.matchMedia('(orientation: portrait)').matches ? 'portrait' : 'landscape';
         this.appbody = document.createElement('div');
         this.appbody.id = 'app-body';
         document.body.appendChild (this.appbody);
@@ -1434,7 +1457,25 @@ class Application {
             this.renderlayer,
             (stringIndex, fret) => this.computedguitar.strings[stringIndex].hold(fret),
             () => { if (this.computedguitar) this.computedguitar.fingerprintsrender(); },
-            onReady
+            () => {
+                onReady();
+                // restaurer la vue caméra pour l'orientation courante
+                const savedViews = this.storage.get('camera-views', {});
+                const v = savedViews[this._orientKey()];
+                if (v) { this.groundrender.setView(v); this.groundrender.render(); }
+                // sauvegarder à chaque mouvement de caméra
+                this.groundrender.onViewChange(() => {
+                    const views = this.storage.get('camera-views', {});
+                    views[this._orientKey()] = this.groundrender.getView();
+                    this.storage.set('camera-views', views);
+                });
+                // changer de vue au changement d'orientation
+                window.matchMedia('(orientation: portrait)').addEventListener('change', () => {
+                    const views = this.storage.get('camera-views', {});
+                    const ov = views[this._orientKey()];
+                    if (ov) { this.groundrender.setView(ov); this.groundrender.render(); }
+                });
+            }
         );
         this.ux = document.createElement('div');
         this.ux.id = 'ux';
@@ -1574,6 +1615,7 @@ class Application {
             }
             this.chordwizard.print(this.onairchord);
             if (this.pluckpad) this.pluckpad.update();
+            this.storage.set('onair-frets', this.model.getholdedfrets());
         };
         this.model = new GuitarModel(stringNames, onStateChange);
         this.computedguitar = new ComputedGuitar(sguitar, this.neckboard, this.groundrender, this.model);
@@ -1582,6 +1624,13 @@ class Application {
             onStateChange
         );
         this.chordwizard.mountPinBoard(this.favctnr);
+
+        // ── restauration on-air ──
+        const savedFrets = this.storage.get('onair-frets', null);
+        if (savedFrets) {
+            for (let i = 0; i < savedFrets.length; i++)
+                this.computedguitar.strings[i].forcehold(savedFrets[i]);
+        }
 
         // ── restauration pinboard ──
         const savedChords = this.storage.get('pinboard', []);
@@ -1615,7 +1664,8 @@ class Application {
                         for (let i = 0; i < voicing.frets.length; i++)
                             this.computedguitar.strings[i].forcehold(voicing.frets[i]);
                         this.groundrender.render();
-                    }
+                    },
+                    this.storage
                 );
             }
         });
@@ -1628,6 +1678,23 @@ class Application {
         pluckSummary.textContent = '⬡ Cordes';
         pluckWrap.appendChild(pluckSummary);
         this.appbody.appendChild(pluckWrap);
+
+        const applyPluckPos = () => {
+            const pos = this.storage.get('pluck-pos', {});
+            const p = pos[this._orientKey()];
+            if (p) {
+                pluckWrap.style.left   = p.left;
+                pluckWrap.style.top    = p.top;
+                pluckWrap.style.bottom = 'auto';
+            }
+        };
+        const savePluckPos = () => {
+            const pos = this.storage.get('pluck-pos', {});
+            pos[this._orientKey()] = { left: pluckWrap.style.left, top: pluckWrap.style.top };
+            this.storage.set('pluck-pos', pos);
+        };
+        applyPluckPos();
+        window.matchMedia('(orientation: portrait)').addEventListener('change', applyPluckPos);
 
         let dragging = false, dragOx = 0, dragOy = 0;
         pluckSummary.addEventListener('mousedown', (e) => {
@@ -1655,8 +1722,8 @@ class Application {
             pluckWrap.style.top  = (t.clientY - dragOy) + 'px';
             pluckWrap.style.bottom = 'auto';
         }, { passive: true });
-        window.addEventListener('mouseup',  () => { dragging = false; });
-        window.addEventListener('touchend', () => { dragging = false; });
+        window.addEventListener('mouseup', () => { if (dragging) { dragging = false; savePluckPos(); } });
+        window.addEventListener('touchend', () => { if (dragging) { dragging = false; savePluckPos(); } });
 
         this.pluckpad = new PluckPad(this.computedguitar.strings, pluckWrap);
     }
