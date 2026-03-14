@@ -446,8 +446,7 @@ class PluckPad {
 
 
             ctnr.addEventListener("touchstart", function (ev) {
-                                //-console.log(ev);
-
+                ev.preventDefault();
                 this.pluck(this.strings[i]);
             }.bind(this));
 
@@ -1397,7 +1396,7 @@ class Application {
         });
 
         this.appbody.addEventListener('click', function (e) {
-            if (this.ux.contains(e.target)) return;
+            if (!this.touchlayer.contains(e.target) && !this.renderlayer.contains(e.target)) return;
             this.groundrender.raycast();
         }.bind(this), false);
 
