@@ -661,6 +661,8 @@ class ChordWizard {
         const maxNotes       = filters.maxNotes       ?? tuning.length;
         const musthave       = filters.musthave       ?? [];
         const allowInversion = filters.allowInversion ?? true;
+        const requireOpen    = filters.requireOpen    ?? false;
+        const maxFret        = filters.maxFret        ?? nfrets;
 
         const chordDef = chordtypes[chordTypeIndex];
         if (!chordDef) return [];
@@ -681,7 +683,7 @@ class ChordWizard {
         const candidates = tuning.map(openNote => {
             const openIdx = allnotes.indexOf(openNote);
             const list = ['x'];
-            for (let f = 0; f <= nfrets; f++) {
+            for (let f = 0; f <= Math.min(nfrets, maxFret); f++) {
                 const idx = openIdx + f;
                 if (idx >= allnotes.length) break;
                 const n = allnotes[idx].replace(/\d/g, '');
@@ -716,6 +718,7 @@ class ChordWizard {
                         if (bassNote !== root) return;
                     }
                 }
+                if (requireOpen && !current.some(f => f === 0)) return;
                 voicings.push({ frets: [...current], notes: [...noteSet], intervals: voicingIntervals, span });
                 return;
             }
@@ -767,51 +770,85 @@ class ChordWizard {
         if (!this._instrument) return;
         domdest.innerHTML = '';
 
-        // ── état des filtres ──
+        // ── onglets ──
+        const tabs = document.createElement('div');
+        tabs.classList.add('catalog-tabs');
+        const tabExplorer = document.createElement('button');
+        tabExplorer.textContent = 'Explorateur';
+        tabExplorer.classList.add('catalog-tab', 'active');
+        const tabOpen = document.createElement('button');
+        tabOpen.textContent = 'Ouverts';
+        tabOpen.classList.add('catalog-tab');
+        tabs.append(tabExplorer, tabOpen);
+        domdest.appendChild(tabs);
+
+        const panelExplorer = document.createElement('div');
+        const panelOpen     = document.createElement('div');
+        domdest.append(panelExplorer, panelOpen);
+
+        const showTab = (tab) => {
+            if (tab === 'explorer') {
+                tabExplorer.classList.add('active');
+                tabOpen.classList.remove('active');
+                panelExplorer.style.display = '';
+                panelOpen.style.display = 'none';
+            } else {
+                tabOpen.classList.add('active');
+                tabExplorer.classList.remove('active');
+                panelOpen.style.display = '';
+                panelExplorer.style.display = 'none';
+                if (!panelOpen._built) { this._buildOpenPanel(panelOpen, onApplyVoicing); panelOpen._built = true; }
+            }
+        };
+        tabExplorer.addEventListener('click', () => showTab('explorer'));
+        tabOpen.addEventListener('click',     () => showTab('open'));
+
+        // ── panel Explorateur ──
+        this._buildExplorerPanel(panelExplorer, onApplyVoicing);
+        panelOpen.style.display = 'none';
+    }
+
+    _buildExplorerPanel (domdest, onApplyVoicing) {
         let state = {
             root: notes[0],
-            chordTypeIndex: 2,   // majeur par défaut
+            chordTypeIndex: 2,
             maxSpan: 4,
             minNotes: 3,
             maxNotes: this._instrument.tuning.length,
             allowInversion: true
         };
 
+        const makeVoicingCard = (v, chordName, onApply) => {
+            const card = document.createElement('div');
+            card.classList.add('voicing-card');
+            card.innerHTML =
+                '<div class="vc-frets">' + v.frets.join(' ') + '</div>' +
+                '<div class="vc-span">span ' + v.span + '</div>';
+            card.addEventListener('click', () => onApply(v, chordName));
+            return card;
+        };
+        this._makeVoicingCard = makeVoicingCard;
+
         const render = () => {
             grid.innerHTML = '';
             const voicings = this.buildVoicings(state.root, state.chordTypeIndex, {
                 maxSpan:        state.maxSpan,
                 minNotes:       state.minNotes,
-                maxNotes:        state.maxNotes,
-                allowInversion:  state.allowInversion
+                maxNotes:       state.maxNotes,
+                allowInversion: state.allowInversion
             });
             const chordName = state.root + chordtypes[state.chordTypeIndex].sym;
             header.textContent = chordName + ' — ' + voicings.length + ' voicing' + (voicings.length > 1 ? 's' : '');
-
-            voicings.slice(0, 48).forEach(v => {
-                const card = document.createElement('div');
-                card.classList.add('voicing-card');
-
-                const fretStr = v.frets.map(f => f === 'x' ? 'x' : f).join(' ');
-                card.innerHTML =
-                    '<div class="vc-frets">' + fretStr + '</div>' +
-                    '<div class="vc-span">span ' + v.span + '</div>';
-
-                card.addEventListener('click', () => onApplyVoicing(v, chordName));
-                grid.appendChild(card);
-            });
+            voicings.slice(0, 48).forEach(v => grid.appendChild(makeVoicingCard(v, chordName, onApplyVoicing)));
         };
 
-        // ── header ──
         const header = document.createElement('div');
         header.classList.add('catalog-header');
         domdest.appendChild(header);
 
-        // ── filtres ──
         const filters = document.createElement('div');
         filters.classList.add('catalog-filters');
 
-        // sélecteur tonique
         const rootSel = document.createElement('select');
         notes.forEach(n => {
             const o = document.createElement('option');
@@ -821,7 +858,6 @@ class ChordWizard {
         });
         rootSel.addEventListener('change', () => { state.root = rootSel.value; render(); });
 
-        // sélecteur type d'accord
         const typeSel = document.createElement('select');
         chordtypes.forEach((ct, idx) => {
             const o = document.createElement('option');
@@ -832,7 +868,6 @@ class ChordWizard {
         });
         typeSel.addEventListener('change', () => { state.chordTypeIndex = parseInt(typeSel.value); render(); });
 
-        // span max
         const spanLabel = document.createElement('label');
         spanLabel.textContent = 'span ';
         const spanSel = document.createElement('select');
@@ -845,7 +880,6 @@ class ChordWizard {
         spanSel.addEventListener('change', () => { state.maxSpan = parseInt(spanSel.value); render(); });
         spanLabel.appendChild(spanSel);
 
-        // nombre de notes
         const notesLabel = document.createElement('label');
         notesLabel.textContent = 'notes ';
         const notesSel = document.createElement('select');
@@ -861,7 +895,6 @@ class ChordWizard {
         });
         notesLabel.appendChild(notesSel);
 
-        // renversements
         const invLabel = document.createElement('label');
         invLabel.classList.add('catalog-toggle');
         const invCheck = document.createElement('input');
@@ -874,12 +907,52 @@ class ChordWizard {
         filters.append(rootSel, typeSel, spanLabel, notesLabel, invLabel);
         domdest.appendChild(filters);
 
-        // ── grille ──
         const grid = document.createElement('div');
         grid.classList.add('catalog-grid');
         domdest.appendChild(grid);
 
         render();
+    }
+
+    _buildOpenPanel (domdest, onApplyVoicing) {
+        const OPEN_FILTERS = { requireOpen: true, maxFret: 4, maxSpan: 4, minNotes: 3 };
+
+        // pour chaque type d'accord, on collecte toutes les toniques qui ont au moins 1 voicing ouvert
+        chordtypes.forEach((ct, typeIdx) => {
+            const byRoot = {};
+            notes.forEach(root => {
+                const vs = this.buildVoicings(root, typeIdx, OPEN_FILTERS);
+                if (vs.length) byRoot[root] = vs;
+            });
+            if (!Object.keys(byRoot).length) return;
+
+            const section = document.createElement('div');
+            section.classList.add('open-section');
+
+            const title = document.createElement('div');
+            title.classList.add('open-section-title');
+            title.textContent = ct.sym || ct.intervals.join(' ');
+            section.appendChild(title);
+
+            const grid = document.createElement('div');
+            grid.classList.add('catalog-grid');
+
+            Object.entries(byRoot).forEach(([root, vs]) => {
+                vs.forEach(v => {
+                    const chordName = root + ct.sym;
+                    const card = document.createElement('div');
+                    card.classList.add('voicing-card');
+                    card.innerHTML =
+                        '<div class="vc-frets">' + v.frets.join(' ') + '</div>' +
+                        '<div class="vc-span">' + chordName + '</div>';
+                    card.addEventListener('click', () => onApplyVoicing(v, chordName));
+                    grid.appendChild(card);
+                });
+            });
+
+            section.appendChild(grid);
+            domdest.appendChild(section);
+        });
     }
 }
 class Cameraman {
