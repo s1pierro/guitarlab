@@ -697,11 +697,13 @@ div.statebar {
     margin-top: 0.15em;
 }
 
-#catalog-details {
+#catalog-details,
+#pinboard-details {
     margin-top: 0.4em;
     border-top: 1px solid #ddd;
 }
-#catalog-details summary {
+#catalog-details summary,
+#pinboard-details summary {
     cursor: pointer;
     padding: 0.5em 0.5em;
     font-size: 0.85em;
@@ -709,12 +711,15 @@ div.statebar {
     list-style: none;
     user-select: none;
 }
-#catalog-details summary::-webkit-details-marker { display: none; }
-#catalog-details summary::before {
+#catalog-details summary::-webkit-details-marker,
+#pinboard-details summary::-webkit-details-marker { display: none; }
+#catalog-details summary::before,
+#pinboard-details summary::before {
     content: '▸ ';
     font-size: 0.75em;
 }
-#catalog-details[open] summary::before {
+#catalog-details[open] summary::before,
+#pinboard-details[open] summary::before {
     content: '▾ ';
 }
 .catalog-grid {

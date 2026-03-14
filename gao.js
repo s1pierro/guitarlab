@@ -1283,9 +1283,15 @@ class Application {
         this.chordlibrary.id = 'chord-library';
         this.analyserside.appendChild(this.chordlibrary);
 
+        this.pinboarddetails = document.createElement('details');
+        this.pinboarddetails.id = 'pinboard-details';
+        const pinboardsummary = document.createElement('summary');
+        pinboardsummary.innerHTML = '<i class="icon-attach-2"></i> Favoris';
+        this.pinboarddetails.appendChild(pinboardsummary);
         this.favctnr = document.createElement('div');
         this.favctnr.id = 'fav-ctnr';
-        this.chordlibrary.appendChild(this.favctnr);
+        this.pinboarddetails.appendChild(this.favctnr);
+        this.chordlibrary.appendChild(this.pinboarddetails);
 
         this.neckside = document.createElement('div');
         this.neckside.id = 'neck-side';
