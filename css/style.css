@@ -146,10 +146,10 @@
 }
 
 .chord-set {
-  position: absolute;
-  left: 0;
-  bottom: 0;
-  width: 50vw;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3em;
+    padding: 0.4em 0.5em;
 }
 
 .computed-string-container {
