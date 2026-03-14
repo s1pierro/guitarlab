@@ -334,13 +334,15 @@ class ComputedGuitar {
 }
 class ChordPinBoard {
 
-    constructor (domdest, onApplyChord = () => {}, onStateChange = () => {}) {
+    constructor (onApplyChord = () => {}, onStateChange = () => {}) {
         this.onApplyChord = onApplyChord;
         this.onStateChange = onStateChange;
         this.domctnr = document.createElement('div');
         this.domctnr.classList.add('chord-set');
-        domdest.appendChild(this.domctnr);
         this.pinnedchords = [];
+    }
+    mount (domdest) {
+        domdest.appendChild(this.domctnr);
     }
     pinchord (chord) {
       if ( this.has(chord))
@@ -479,115 +481,66 @@ class PluckPad {
         }
     }
 }
-class ChordGuesser {
+class ChordWizard {
 
-    constructor (domdest, computedguitar) {
-        this.computedguitar = computedguitar;
-        this.domctnr = document.createElement('div');
-        this.domctnr.classList.add('sub-tool');
-        domdest.appendChild(this.domctnr);
-
-        this.favctnr = document.createElement('div');
-     //   this.favctnr.innerHTML = '<i class="icon-star-1"></i> Chord Set';
-        this.favctnr.classList.add('sub-tool');
-        domdest.appendChild(this.favctnr);
+    constructor (onApplyChord = () => {}, onStateChange = () => {}) {
+        this._result = null;
+        this._stringIntervals = {};
 
         this.chordpinboard = new ChordPinBoard(
-            this.favctnr,
-            (chord) => { for (let i = 0; i < chord.frets.length; i++) this.computedguitar.strings[i].forcehold(chord.frets[i]); },
-            () => this.description()
+            onApplyChord,
+            onStateChange
         );
-
-
-        this.pickingpaterners = document.createElement('div');
-        this.pickingpaterners.innerHTML = '<i class="icon-note-beamed"></i> Picking paterns';
-        this.pickingpaterners.classList.add('sub-tool');
-//        domdest.appendChild(this.pickingpaterners);
-
-        this.dictionary = document.createElement('div');
-        this.dictionary.innerHTML = '<i class="icon-book"></i> Dictionary';
-        this.dictionary.classList.add('sub-tool');
- //       domdest.appendChild(this.dictionary);
-
-        this.tuner = document.createElement('div');
-        this.tuner.innerHTML = '<i class="icon-sliders"></i> Tuner';
-        this.tuner.classList.add('sub-tool');
-  //      domdest.appendChild(this.tuner);
-
-        this.looper = document.createElement('div');
-        this.looper.innerHTML = '<i class="icon-loop"></i> Looper';
-        this.looper.classList.add('sub-tool');
- //       domdest.appendChild(this.looper);
-
-        this.statebar = document.createElement('div');
-        this.statebar.classList.add('statebar');
-  //      domdest.appendChild(this.statebar);
     }
-    description () {
-        for (var j = 0; j < this.computedguitar.strings.length; j++) {
-            this.computedguitar.strings[j].interval = undefined;
-        }
 
-        this.domctnr.innerHTML = '<i class="icon-note"></i> OnAir';
-        this.domctnr.innerHTML = '';
-        this.rawchord = this.computedguitar.getholdedstrings();
+    guess (notes, frets) {
+        this._stringIntervals = {};
+        this._result = null;
 
-        this.rawnotes = [];
-        for ( let i = 0 ; i < this.rawchord.length ; i++ ) {
-            this.rawnotes.push(this.rawchord [i].octavednote);
-        }
-       // window.application.rollkeys.update(this.rawnotes);
+        if (!notes || notes.length === 0) return;
 
         let basenotes = [];
-        for ( let i = 0 ; i < this.rawchord.length ; i++ ) {
-            if (basenotes.indexOf(this.rawchord[i].basenote) == -1)
-                basenotes.push(this.rawchord[i].basenote);
+        for (let i = 0; i < notes.length; i++) {
+            if (basenotes.indexOf(notes[i].basenote) === -1)
+                basenotes.push(notes[i].basenote);
         }
+
         let founded = [];
 
-        this.statebar.innerHTML = '';
-
-
-        for ( let i = 0 ; i < basenotes.length ; i++ )
-        {
-            let highscore = {chordtypeindex: -1, score: -1000};
-
+        for (let i = 0; i < basenotes.length; i++) {
+            let highscore = { chordtypeindex: -1, score: -1000 };
             let its = [];
-
             let root = basenotes[i];
-            for ( let j = 0 ; j < basenotes.length ; j++ ) {
-                its.push(this.getinterval (root, basenotes[j] ));
+
+            for (let j = 0; j < basenotes.length; j++) {
+                its.push(this.getinterval(root, basenotes[j]));
             }
-            for ( let k= 0 ; k < chordtypes.length ; k++ )
-            {
+
+            for (let k = 0; k < chordtypes.length; k++) {
                 let tableau1 = chordtypes[k].intervals;
                 let required = chordtypes[k].musthave;
 
                 let intersection = tableau1.filter(val => its.includes(val));
-
                 let missing = tableau1.filter(val => !its.includes(val));
                 let mismatch = its.filter(val => !tableau1.includes(val));
 
                 let score = intersection.length;
-                if ( missing.length > 0 ) score *= 0.8;
-                if ( missing.length > 1 ) score *= 0.8;
-                if ( missing.length > 2 ) score *= 0.8;
-                if ( mismatch.length > 0 ) score = 0;
+                if (missing.length > 0) score *= 0.8;
+                if (missing.length > 1) score *= 0.8;
+                if (missing.length > 2) score *= 0.8;
+                if (mismatch.length > 0) score = 0;
                 let fail = required.filter(val => missing.includes(val));
-                if (fail.length > 0 ) score *= 0.0;
-                if (its[0] == 'root') score *= 1.1;
-
+                if (fail.length > 0) score *= 0.0;
+                if (its[0] === 'root') score *= 1.1;
 
                 let bass = '';
-                if ( its.indexOf('root') != 0 ) bass = '/'+basenotes[0];
+                if (its.indexOf('root') !== 0) bass = '/' + basenotes[0];
 
-                if (score>highscore.score && mismatch.length == 0)
-                {
+                if (score > highscore.score && mismatch.length === 0) {
                     highscore.score = score;
-                    highscore.chordtype = root+chordtypes[k].sym+bass;
+                    highscore.chordtype = root + chordtypes[k].sym + bass;
                     highscore.type = chordtypes[k].sym;
                     highscore.desc = chordtypes[k].desc;
-
                     highscore.chordtypeindex = k;
                     highscore.root = root;
                     highscore.missing = missing;
@@ -595,20 +548,12 @@ class ChordGuesser {
                     highscore.bass = bass;
                 }
             }
-            if ( highscore.score > 0 )
-            {
-                let rawthings = this.computedguitar.getholdedstrings();
-                let rawnotes = [];
-                for (var j = 0; j < rawthings.length; j++) {
-                    rawnotes.push(rawthings[j].octavednote);
-                }
-                let rawintervals = [];
-                for (var j = 0; j < rawthings.length; j++) {
-                    rawintervals.push(this.getinterval( highscore.root,  rawthings[j].basenote));
-                }
-                highscore.chord =
-                new Chord (
-                    this.computedguitar.getholdedfrets(),
+
+            if (highscore.score > 0) {
+                let rawnotes = notes.map(n => n.octavednote);
+                let rawintervals = notes.map(n => this.getinterval(highscore.root, n.basenote));
+                highscore.chord = new Chord(
+                    frets,
                     highscore.chordtype,
                     highscore.root,
                     highscore.type,
@@ -616,112 +561,89 @@ class ChordGuesser {
                     highscore.bass,
                     rawnotes,
                     rawintervals
-
-                    );
+                );
                 founded.push(highscore);
             }
         }
 
-        let someguessing = document.createElement('div');
         founded.sort((a, b) => b.score - a.score);
-        for (var i = 0; i < founded.length; i++) {
-          if ( i == 1) break;
+        this._result = { founded, notes, frets };
+
+        // compute per-string interval map
+        if (founded.length > 0) {
+            const best = founded[0];
+            for (let j = 0; j < notes.length; j++) {
+                const interval = this.getinterval(best.root, notes[j].basenote).replace('#', 'm');
+                this._stringIntervals[notes[j].stringnumber] = interval;
+            }
+        }
+    }
+
+    print (domdest) {
+        domdest.innerHTML = '';
+        if (!this._result || this._result.founded.length === 0) return;
+
+        const { founded, notes, frets } = this._result;
+        let someguessing = document.createElement('div');
+
+        for (let i = 0; i < founded.length; i++) {
+            if (i === 1) break;
+
             let aguess = document.createElement('div');
-            aguess.classList.add ('chord-guess');
+            aguess.classList.add('chord-guess');
+
             let aguesstitle = document.createElement('div');
-            aguesstitle.classList.add ('chord-guess-title');
-            aguesstitle.innerHTML = '<strong>'+founded[i].chordtype+' </strong><span class="score">'+founded[i].score.toFixed(1)+'</span>';
-
-            let aguessintervals = document.createElement('div');
-            aguessintervals.classList.add ('chord-guess-intervals');
-
-            let somehtml = ''+founded[i].matching.join(', ');
-            somehtml = '<i class="it icon-it-r"></i><i class="icon-it-'+founded[i].matching.join('"></i><i class="it icon-it-')+'"></i>';
-            if ( founded[i].missing.length != 0 ) somehtml += ' (<span class="missing">'+founded[i].missing.join(', ')+'</span>)';
-            aguessintervals.innerHTML = somehtml;
+            aguesstitle.classList.add('chord-guess-title');
+            aguesstitle.innerHTML = '<strong>' + founded[i].chordtype + ' </strong><span class="score">' + founded[i].score.toFixed(1) + '</span>';
 
             let aguessdesc = document.createElement('div');
-            aguessdesc.classList.add ('chord-guess-desc');
-            let desc = '';
-            let rawthings = this.computedguitar.getholdedstrings();
-            //-console.log(rawthings);
+            aguessdesc.classList.add('chord-guess-desc');
+
             let sheme = '';
-
-            let rawnotes = [];
-            for (var j = 0; j < rawthings.length; j++) {
-                if (rawthings[j].fret != -1)
-                rawnotes.push(rawthings[j].basenote);
-
+            for (let j = 0; j < notes.length; j++) {
+                if (notes[j].basenote !== undefined) {
+                    const itv = this.getinterval(founded[i].root, notes[j].basenote).replace('#', 'm');
+                    sheme += '<span class="itv itv-' + itv + '">' + notes[j].basenote + '</span>';
+                }
             }
 
-            //////////////////////////////////////////////
-            //////////////////////////////////////////////
-            //////////////////////////////////////////////
+            aguessdesc.innerHTML = frets.join(' ') + '<br>' + sheme;
 
-
-
-            for (var j = 0; j < rawthings.length; j++) {
-                //-console.log(rawthings[j].basenote);
-                this.computedguitar.strings[rawthings[j].stringnumber].interval = this.getinterval( founded[i].root,  rawthings[j].basenote).replace('\#', 'm');
-                if (rawthings[j].basenote != undefined)
-                sheme+='<span class="itv itv-'+this.getinterval( founded[i].root,  rawthings[j].basenote).replace('\#', 'm')+'">'+rawthings[j].basenote+'</span>';
-            }
-
-
-            let rawintervals = [];
-            for (var j = 0; j < rawthings.length; j++) {
-                if (rawthings[j].fret != -1)
-                rawintervals.push(this.getinterval( founded[i].root,  rawthings[j].basenote));
-            }
-            desc+= this.computedguitar.getholdedfrets().join(' ');
-            desc+='<br>'+sheme;
-          //  desc+='<br> description ';
-          //  desc+='<br>'+founded[i].desc;
-
-            aguessdesc.innerHTML = desc;
-
-            aguess.appendChild(aguesstitle);
-          //  aguess.appendChild(aguessintervals);
-            if ( i == 0 ) {
+            if (i === 0) {
                 let pinbtn = document.createElement('span');
                 pinbtn.classList.add('pin-btn');
-                pinbtn.classList.add('blast');
-                pinbtn.innerHTML = '<i class="icon-star-1"></i>';
                 pinbtn.innerHTML = '<i class="icon-attach-2"></i>';
-
-
-              if (this.chordpinboard.has(founded[0].chord)  == true)
+                if (this.chordpinboard.has(founded[0].chord)) {
+                    pinbtn.classList.add('blast');
+                }
+                pinbtn.addEventListener('click', () => {
+                    this.chordpinboard.pinchord(founded[0].chord);
+                }, true);
                 aguesstitle.prepend(pinbtn);
-              else {
-                pinbtn.classList.remove('blast');
-                pinbtn.innerHTML = '<i class="icon-attach-2"></i>';
-
-                aguesstitle.prepend(pinbtn);
-              }
-
-
-                pinbtn.addEventListener ('click', function () {
-                    //-console.log(this);
-                    //-console.log(founded);
-                    this.chordpinboard.pinchord( founded[0].chord );
-                }.bind(this), true);
             }
 
+            aguess.appendChild(aguesstitle);
             aguess.appendChild(aguessdesc);
             someguessing.appendChild(aguess);
         }
-        this.computedguitar.fingerprintsrender();
 
-        this.domctnr.appendChild(someguessing);
+        domdest.appendChild(someguessing);
     }
+
+    mountPinBoard (domdest) {
+        this.chordpinboard.mount(domdest);
+    }
+
+    getStringIntervals () {
+        return this._stringIntervals;
+    }
+
     getinterval (r, n) {
         let rpos = notes.indexOf(r);
-        let  npos = notes.indexOf(n);
+        let npos = notes.indexOf(n);
         let it = npos - rpos;
-        if ( it < 0 ) it += 12;
-
-        let interval = intervals[it];
-        return interval
+        if (it < 0) it += 12;
+        return intervals[it];
     }
 }
 class Cameraman {
@@ -1116,6 +1038,9 @@ class Application {
         this.analyserside = document.createElement('div');
         this.analyserside.id = 'analyser-side';
         this.appbody.appendChild (this.analyserside);
+        this.favctnr = document.createElement('div');
+        this.favctnr.id = 'fav-ctnr';
+        this.appbody.appendChild(this.favctnr);
 
         this.neckside = document.createElement('div');
         this.neckside.id = 'neck-side';
@@ -1207,12 +1132,23 @@ class Application {
         };
         const stringNames = sguitar.stringdefs.map(d => d.pitch);
         const onStateChange = () => {
-            this.analyser.description();
+            const heldNotes = this.model.getholdedstrings();
+            const heldFrets = this.model.getholdedfrets();
+            this.chordwizard.guess(heldNotes, heldFrets);
+            const stringIntervals = this.chordwizard.getStringIntervals();
+            for (let i = 0; i < this.computedguitar.strings.length; i++) {
+                this.computedguitar.strings[i].interval = stringIntervals[i];
+            }
+            this.chordwizard.print(this.analyserside);
             this.pluckpad.update();
         };
         this.model = new GuitarModel(stringNames, onStateChange);
         this.computedguitar = new ComputedGuitar(sguitar, this.neckboard, this.groundrender, this.model);
-        this.analyser = new ChordGuesser(this.analyserside, this.computedguitar);
+        this.chordwizard = new ChordWizard(
+            (chord) => { for (let i = 0; i < chord.frets.length; i++) this.computedguitar.strings[i].forcehold(chord.frets[i]); },
+            onStateChange
+        );
+        this.chordwizard.mountPinBoard(this.favctnr);
         this.pluckpad = new PluckPad(this.computedguitar.strings, this.appbody);
     }
     start () {
