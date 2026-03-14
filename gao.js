@@ -656,10 +656,11 @@ class ChordWizard {
     buildVoicings (root, chordTypeIndex, filters = {}) {
         if (!this._instrument) return [];
         const { tuning, frets: nfrets } = this._instrument;
-        const maxSpan   = filters.maxSpan  ?? 4;
-        const minNotes  = filters.minNotes ?? 3;
-        const maxNotes  = filters.maxNotes ?? tuning.length;
-        const musthave  = filters.musthave ?? [];
+        const maxSpan        = filters.maxSpan        ?? 4;
+        const minNotes       = filters.minNotes       ?? 3;
+        const maxNotes       = filters.maxNotes       ?? tuning.length;
+        const musthave       = filters.musthave       ?? [];
+        const allowInversion = filters.allowInversion ?? true;
 
         const chordDef = chordtypes[chordTypeIndex];
         if (!chordDef) return [];
@@ -706,6 +707,15 @@ class ChordWizard {
                     const n = allnotes[openIdx + f].replace(/\d/g, '');
                     return this.getinterval(root, n);
                 });
+                // filtre renversements : la première corde jouée doit être la fondamentale
+                if (!allowInversion) {
+                    const bassIdx = current.findIndex(f => f !== 'x');
+                    if (bassIdx !== -1) {
+                        const openIdx = allnotes.indexOf(tuning[bassIdx]);
+                        const bassNote = allnotes[openIdx + current[bassIdx]].replace(/\d/g, '');
+                        if (bassNote !== root) return;
+                    }
+                }
                 voicings.push({ frets: [...current], notes: [...noteSet], intervals: voicingIntervals, span });
                 return;
             }
@@ -763,15 +773,17 @@ class ChordWizard {
             chordTypeIndex: 2,   // majeur par défaut
             maxSpan: 4,
             minNotes: 3,
-            maxNotes: this._instrument.tuning.length
+            maxNotes: this._instrument.tuning.length,
+            allowInversion: true
         };
 
         const render = () => {
             grid.innerHTML = '';
             const voicings = this.buildVoicings(state.root, state.chordTypeIndex, {
-                maxSpan:  state.maxSpan,
-                minNotes: state.minNotes,
-                maxNotes: state.maxNotes
+                maxSpan:        state.maxSpan,
+                minNotes:       state.minNotes,
+                maxNotes:        state.maxNotes,
+                allowInversion:  state.allowInversion
             });
             const chordName = state.root + chordtypes[state.chordTypeIndex].sym;
             header.textContent = chordName + ' — ' + voicings.length + ' voicing' + (voicings.length > 1 ? 's' : '');
@@ -849,7 +861,17 @@ class ChordWizard {
         });
         notesLabel.appendChild(notesSel);
 
-        filters.append(rootSel, typeSel, spanLabel, notesLabel);
+        // renversements
+        const invLabel = document.createElement('label');
+        invLabel.classList.add('catalog-toggle');
+        const invCheck = document.createElement('input');
+        invCheck.type = 'checkbox';
+        invCheck.checked = state.allowInversion;
+        invCheck.addEventListener('change', () => { state.allowInversion = invCheck.checked; render(); });
+        invLabel.appendChild(invCheck);
+        invLabel.append(' renversements');
+
+        filters.append(rootSel, typeSel, spanLabel, notesLabel, invLabel);
         domdest.appendChild(filters);
 
         // ── grille ──
