@@ -44,39 +44,46 @@
     z-index: 5;
     opacity: 0.2;
 }
-#analyser-side {
-
+#ux {
     position: absolute;
-    top: 7vh;
-    left: 30vw;
-    display: inline-block;
-    margin-right: 22vh;
-    background: #9224a0;
-    background: #000;
-    background: #efefef00;
-    
-    height: 90vh;
-    max-height: 80vh;
-    width: 70vw;
-    boxx-shadow: 0 0 1em #000;
-    boox-shadow: inset 0 0 1em #000;
-    boox-shadow: 0 0 1em #000;
-    padding: 0.2em;
-    padding-left: 0em;
+    top: 0;
+    right: 0;
+    width: 66vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
     overflow: hidden;
     z-index: 10;
+    pointer-events: none;
 }
-#PluckPad {
+#ux > * {
+    pointer-events: auto;
+}
+#pluck-pad-wrap {
     position: absolute;
-    display: flex;
-    width: 100vw;
-    height: 3em;
-    bottom: calc(0.5em + env(safe-area-inset-bottom, 0px));
-    left: 50vw;
-    transform: translate(-50%, 0);
-    align-items: center;
     z-index: 50;
-    padding: 0;
+    left: 0.5em;
+    bottom: calc(0.5em + env(safe-area-inset-bottom, 0px));
+    background: #000a;
+    border-radius: 0.5em;
+    overflow: hidden;
+    touch-action: none;
+    user-select: none;
+}
+#pluck-pad-wrap > summary {
+    cursor: grab;
+    padding: 0.25em 0.6em;
+    font-size: 0.75em;
+    color: #ffffff99;
+    list-style: none;
+}
+#pluck-pad-wrap > summary:active { cursor: grabbing; }
+#pluck-pad-wrap[open] > summary { border-bottom: 1px solid #ffffff22; }
+#PluckPad {
+    display: flex;
+    height: 3em;
+    align-items: center;
+    padding: 0 0.25em;
 }
 #app-stamp {
     position: absolute;

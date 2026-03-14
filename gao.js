@@ -952,7 +952,7 @@ class ChordWizard {
     }
 }
 class Cameraman {
-    constructor (onNeedRender = () => {}) {
+    constructor (onNeedRender = () => {}, domElement = document.body) {
 
         this.onNeedRender = onNeedRender;
         this.viewRatio = 1.0;
@@ -961,7 +961,7 @@ class Cameraman {
         this.camera = new THREE.PerspectiveCamera( 25, window.innerWidth / window.innerHeight, 0.1, 15 );
         this.camera.position.set( 0.13203648995258088, -0.05773723849390569, 1.104895121140156 );
 
-        this.controls = new OrbitControls( this.camera, document.getElementById('app-body') || document.body );
+        this.controls = new OrbitControls( this.camera, domElement );
         this.controls.maxDistance = 2;
         this.controls.minDistance = 0.3;
         this.controls.maxPolarAngle = Math.PI/1.2;
@@ -969,7 +969,8 @@ class Cameraman {
         this.controls.minAzimuthAngle = 0;
         this.controls.maxAzimuthAngle = 0;
         this.controls.target = new THREE.Vector3( 0.13203648995258088, 0.1, -0.01832311632648151 );
-        document.getElementById('app-body').addEventListener( 'mousemove', (e) => {
+
+        domElement.addEventListener( 'mousemove', (e) => {
             this.normalisedmouse = {
                 x: (e.clientX / window.innerWidth) * 2 - 1,
                 y: 1 - (e.clientY / window.innerHeight) * 2
@@ -983,12 +984,11 @@ class Cameraman {
                 x: (touch.clientX / window.innerWidth) * 2 - 1,
                 y: 1 - (touch.clientY / window.innerHeight) * 2
             };
-
             this.onNeedRender();
         };
-        window.addEventListener( 'touchstart', updateFromTouch, { passive: true });
-        window.addEventListener( 'touchmove',  updateFromTouch, { passive: true });
-        window.addEventListener( 'wheel',      () => this.onNeedRender(), false );
+        domElement.addEventListener( 'touchstart', updateFromTouch, { passive: true });
+        domElement.addEventListener( 'touchmove',  updateFromTouch, { passive: true });
+        domElement.addEventListener( 'wheel',      () => this.onNeedRender(), false );
     }
     update () {
         this.controls.update();
@@ -1070,7 +1070,7 @@ class GroundRender {
     }
     init () {
 
-        this.cameraman = new Cameraman( () => this.render() );
+        this.cameraman = new Cameraman( () => this.render(), document.getElementById('touch-layer') || document.body );
 
         this.scene = new THREE.Scene();              //#fffdf0
         this.scene.background = new THREE.Color( 0xeeeeee );
@@ -1340,17 +1340,17 @@ class Application {
             (stringIndex, fret) => this.computedguitar.strings[stringIndex].hold(fret),
             () => { if (this.computedguitar) this.computedguitar.fingerprintsrender(); }
         );
-        this.analyserside = document.createElement('div');
-        this.analyserside.id = 'analyser-side';
-        this.appbody.appendChild(this.analyserside);
+        this.ux = document.createElement('div');
+        this.ux.id = 'ux';
+        this.appbody.appendChild(this.ux);
 
         this.onairchord = document.createElement('div');
         this.onairchord.id = 'onair-chord';
-        this.analyserside.appendChild(this.onairchord);
+        this.ux.appendChild(this.onairchord);
 
         this.chordlibrary = document.createElement('div');
         this.chordlibrary.id = 'chord-library';
-        this.analyserside.appendChild(this.chordlibrary);
+        this.ux.appendChild(this.chordlibrary);
 
         this.pinboarddetails = document.createElement('details');
         this.pinboarddetails.id = 'pinboard-details';
@@ -1498,7 +1498,45 @@ class Application {
             }
         });
 
-        this.pluckpad = new PluckPad(this.computedguitar.strings, this.appbody);
+        // PluckPad — flottant déplaçable + dépliable
+        const pluckWrap = document.createElement('details');
+        pluckWrap.id = 'pluck-pad-wrap';
+        pluckWrap.open = true;
+        const pluckSummary = document.createElement('summary');
+        pluckSummary.textContent = '⬡ Cordes';
+        pluckWrap.appendChild(pluckSummary);
+        this.appbody.appendChild(pluckWrap);
+
+        let dragging = false, dragOx = 0, dragOy = 0;
+        pluckSummary.addEventListener('mousedown', (e) => {
+            dragging = true;
+            dragOx = e.clientX - pluckWrap.getBoundingClientRect().left;
+            dragOy = e.clientY - pluckWrap.getBoundingClientRect().top;
+            e.preventDefault();
+        });
+        pluckSummary.addEventListener('touchstart', (e) => {
+            const t = e.touches[0];
+            dragging = true;
+            dragOx = t.clientX - pluckWrap.getBoundingClientRect().left;
+            dragOy = t.clientY - pluckWrap.getBoundingClientRect().top;
+        }, { passive: true });
+        window.addEventListener('mousemove', (e) => {
+            if (!dragging) return;
+            pluckWrap.style.left = (e.clientX - dragOx) + 'px';
+            pluckWrap.style.top  = (e.clientY - dragOy) + 'px';
+            pluckWrap.style.bottom = 'auto';
+        });
+        window.addEventListener('touchmove', (e) => {
+            if (!dragging) return;
+            const t = e.touches[0];
+            pluckWrap.style.left = (t.clientX - dragOx) + 'px';
+            pluckWrap.style.top  = (t.clientY - dragOy) + 'px';
+            pluckWrap.style.bottom = 'auto';
+        }, { passive: true });
+        window.addEventListener('mouseup',  () => { dragging = false; });
+        window.addEventListener('touchend', () => { dragging = false; });
+
+        this.pluckpad = new PluckPad(this.computedguitar.strings, pluckWrap);
     }
     start () {
 
