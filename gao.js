@@ -984,13 +984,18 @@ class ChordWizard {
                 groups.get(pos).push(v);
             });
             groups.forEach((vs, pos) => {
-                const sub = document.createElement('div');
-                sub.classList.add('catalog-sub-title');
-                sub.textContent = pos === 0 ? 'Position ouverte' : 'Position ' + pos;
-                grid.appendChild(sub);
                 const row = document.createElement('div');
-                row.classList.add('catalog-grid');
-                vs.forEach(v => row.appendChild(makeCard(v, chordName)));
+                row.classList.add('catalog-position-row');
+
+                const label = document.createElement('div');
+                label.classList.add('catalog-pos-label');
+                label.textContent = pos === 0 ? '○' : pos;
+
+                const cards = document.createElement('div');
+                cards.classList.add('catalog-pos-cards');
+                vs.forEach(v => cards.appendChild(makeCard(v, chordName)));
+
+                row.append(label, cards);
                 grid.appendChild(row);
             });
 

@@ -727,16 +727,35 @@ div.statebar {
     border-top: 2px solid #ccc;
     margin-top: 0.5em;
 }
-.catalog-sub-title {
-    position: sticky;
-    top: 0;
-    font-size: 0.8em;
+.catalog-position-row {
+    display: flex;
+    align-items: flex-start;
+    border-top: 1px solid #e8e8e8;
+}
+.catalog-pos-label {
+    flex-shrink: 0;
+    width: 2em;
+    text-align: center;
+    font-size: 0.75em;
     font-weight: bold;
-    padding: 0.4em 0.5em 0.15em;
-    color: #555;
+    color: #888;
+    padding: 0.5em 0.2em 0;
+    position: sticky;
+    left: 0;
     background: #f0f0f0;
-    border-top: 1px solid #ddd;
     z-index: 1;
+    align-self: stretch;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.catalog-pos-cards {
+    display: flex;
+    flex-direction: row;
+    overflow-x: auto;
+    gap: 0.35em;
+    padding: 0.35em 0.4em;
+    flex: 1;
 }
 .catalog-filters {
     display: flex;
@@ -760,7 +779,10 @@ div.statebar {
 }
 .catalog-positions {
     overflow-y: auto;
-    max-height: 14em;
+    max-height: 18em;
+}
+.catalog-pos-cards .voicing-card {
+    flex-shrink: 0;
 }
 .catalog-grid {
     display: flex;
