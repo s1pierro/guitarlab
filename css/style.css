@@ -81,9 +81,9 @@
 #pluck-pad-wrap[open] > summary { border-bottom: 1px solid #ffffff22; }
 #PluckPad {
     display: flex;
-    height: 3em;
-    align-items: center;
-    padding: 0 0.25em;
+    align-items: stretch;
+    padding: 0.3em 0.25em;
+    gap: 0.25em;
 }
 #ux-brand {
     padding: 0.5em 0.75em 0.4em;
@@ -108,20 +108,23 @@
     z-index: 50;
     padding: 0;
 }
-.p-pad:first-child { 
-       margin-left: 0.5em;
-
-}.p-pad:last-child { 
-       margin-right: 0.5em;
-
-}
 .p-pad {
-        background: #0005;
-        color: #fff;
-        text-shadow: 0 0 0.2em #fffO;
-        margin: 0.25em;
+    position: relative;
+    background: #0005;
     border-radius: 0.5em;
-
+    width: 2.6em;
+    aspect-ratio: 1 / 2.5;
+    flex-shrink: 0;
+}
+.p-pad-note {
+    position: absolute;
+    bottom: 0.3em;
+    right: 0.35em;
+    font-size: 0.62em;
+    color: #ffffffcc;
+    text-shadow: 0 0 0.3em #000;
+    line-height: 1;
+    pointer-events: none;
 }
 .sub-tool {
     padding: 0.25em;

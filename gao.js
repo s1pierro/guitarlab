@@ -485,53 +485,21 @@ class PluckPad {
       for (let i = 0; i < this.strings.length; i++) {
 
             let ctnr = document.createElement('div');
-            //ctnr.style.dispay = 'inine-block';
             ctnr.classList.add('p-pad');
-            ctnr.style.flexGrow = "3";
-            ctnr.style.textAlign = "center";
-   /*ù         ctnr.style.background = "#fffa";
-            ctnr.style.color = "#333";
-            ctnr.style.textShadow = "0 0 0.15em #fff5";
 
-
-
-            ctnr.style.marginLeft = "0.5em";
-            ctnr.style.marginBottom = "0.5em";
-      */      ctnr.style.lineHeight = "3em";
-
-        /*/ Install event handlers for the given element
-            ctnr.ontouchstart = this.start_handler;
-            ctnr.ontouchmove = this.move_handler;
-        // Use same handler for touchcancel and touchend
-            ctnr.ontouchcancel = this.end_handler;
-            ctnr.ontouchend = this.end_handler;
-            */
-         //   ctnr.ontouchstart = this.pluck;
-
-
-            ctnr.addEventListener("touchstart", function (ev) {
+            ctnr.addEventListener('touchstart', (ev) => {
                 ev.preventDefault();
                 this.pluck(this.strings[i]);
-            }.bind(this));
+            });
+            ctnr.addEventListener('touchmove', (ev) => { ev.preventDefault(); }, { passive: false });
 
-
-            ctnr.addEventListener("touchmove", function (ev) {
-                //-console.log(ev)
-             //   this.pluck(this.strings[i]);
-            }.bind(this));
-
-       /*     ctnr.addEventListener('click', function() {
-                this.pluck(this.strings[i]);
-            }.bind(this), false);*/
-   /*       ctnr.addEventListener('mouseenter', function() {
-                this.pluck(this.strings[i]);
-            }.bind(this), false);*/
-
-
-
-           // ctnr.style.width = '3em';
-            //ctnr.style.height = '3em';
-            ctnr.innerHTML = this.strings[i].getstate().octavednote;
+            const state = this.strings[i].getstate();
+            if (state.octavednote !== 'x') {
+                const noteEl = document.createElement('span');
+                noteEl.classList.add('p-pad-note');
+                noteEl.textContent = state.octavednote;
+                ctnr.appendChild(noteEl);
+            }
 
             let apad = {
                 string: this.strings[i],
