@@ -875,14 +875,17 @@ div.statebar {
     user-select: none;
 }
 #catalog-details summary::-webkit-details-marker,
-#pinboard-details summary::-webkit-details-marker { display: none; }
+#pinboard-details summary::-webkit-details-marker,
+#partitions-details summary::-webkit-details-marker { display: none; }
 #catalog-details summary::before,
-#pinboard-details summary::before {
+#pinboard-details summary::before,
+#partitions-details summary::before {
     content: '▸ ';
     font-size: 0.75em;
 }
 #catalog-details[open] summary::before,
-#pinboard-details[open] summary::before {
+#pinboard-details[open] summary::before,
+#partitions-details[open] summary::before {
     content: '▾ ';
 }
 
@@ -902,3 +905,178 @@ div.statebar {
     gap: 0.3em;
     cursor: pointer;
 }
+
+/* ─── Partitions ──────────────────────────────────────────────────────────── */
+#partitions-details {
+    border-top: 1px solid #ddd;
+}
+#partitions-content {
+    background: #f8f8f8;
+}
+.partition-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.15em;
+    padding: 0.35em 0.5em 0;
+    background: #efefef;
+    border-bottom: 1px solid #ddd;
+}
+.partition-tab {
+    display: flex;
+    align-items: center;
+    gap: 0.2em;
+    padding: 0.2em 0.5em;
+    border-radius: 0.3em 0.3em 0 0;
+    background: #e0e0e0;
+    font-size: 0.8em;
+    cursor: pointer;
+}
+.partition-tab.active {
+    background: #fff;
+    border: 1px solid #ccc;
+    border-bottom: 1px solid #fff;
+    margin-bottom: -1px;
+}
+.partition-tab-name { outline: none; min-width: 2em; }
+.partition-tab-del  { opacity: 0.4; cursor: pointer; }
+.partition-tab-del:hover { opacity: 1; }
+.partition-tab-add  { background: transparent; opacity: 0.5; font-size: 1.05em; padding: 0.1em 0.5em; }
+.partition-tab-add:hover { opacity: 1; }
+
+.partition-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    padding: 0.35em 0.6em;
+    background: #fafafa;
+    border-bottom: 1px solid #eee;
+}
+.partition-bpm-label {
+    font-size: 0.78em;
+    color: #666;
+    display: flex;
+    align-items: center;
+    gap: 0.2em;
+}
+.partition-bpm-input {
+    width: 3.5em;
+    font-size: 0.85em;
+    border: 1px solid #ccc;
+    border-radius: 0.25em;
+    padding: 0.1em 0.2em;
+    text-align: center;
+}
+.partition-play-btn,
+.partition-loop-btn {
+    border: 1px solid #ccc;
+    background: #eee;
+    border-radius: 0.3em;
+    cursor: pointer;
+    font-size: 1em;
+    padding: 0.2em 0.55em;
+    line-height: 1;
+}
+.partition-play-btn:hover,
+.partition-loop-btn:hover  { background: #ddd; }
+.partition-loop-btn.active { background: #ede9fe; color: #7c3aed; border-color: #c4b5fd; }
+
+.partition-timeline {
+    display: flex;
+    flex-direction: row;
+    overflow-x: auto;
+    gap: 0;
+    padding: 0.4em 0.5em 0.5em;
+    background: #fff;
+    align-items: stretch;
+}
+.partition-slot {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid #ddd;
+    border-radius: 0.25em;
+    margin-right: 0.35em;
+    min-width: 9em;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+.partition-chord-header {
+    background: #f0e8ff;
+    min-height: 3.2em;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.15em;
+    padding: 0.4em 1.4em 0.3em 0.4em;
+    border-bottom: 1px solid #ddd;
+    position: relative;
+    cursor: default;
+}
+.partition-chord-frets {
+    display: flex;
+    gap: 0.12em;
+}
+.partition-chord-frets span {
+    background: #ddd4f4;
+    border-radius: 0.2em;
+    padding: 0.05em 0.18em;
+    font-size: 0.62em;
+    font-family: monospace;
+    min-width: 1.1em;
+    text-align: center;
+    color: #333;
+}
+.partition-chord-name {
+    font-size: 0.78em;
+    font-weight: bold;
+    color: #5b21b6;
+}
+.partition-chord-apply,
+.partition-chord-del {
+    position: absolute;
+    font-size: 0.8em;
+    cursor: pointer;
+    opacity: 0.45;
+    top: 0.2em;
+}
+.partition-chord-apply:hover,
+.partition-chord-del:hover { opacity: 1; }
+.partition-chord-apply { right: 1.3em; }
+.partition-chord-del   { right: 0.3em; }
+
+.partition-assign-btn {
+    font-size: 1.3em;
+    opacity: 0.3;
+    cursor: pointer;
+    padding: 0.35em;
+}
+.partition-assign-btn:hover { opacity: 0.85; }
+
+.partition-grid      { display: flex; flex-direction: column; flex: 1; }
+.partition-grid-row  { display: flex; flex: 1; min-height: 1.15em; }
+.partition-cell {
+    flex: 1;
+    border-right: 1px solid #ececec;
+    border-bottom: 1px solid #ececec;
+    cursor: pointer;
+    background: #fafafa;
+    transition: background 0.08s;
+    touch-action: none;
+}
+.partition-cell.beat-start { border-left: 1px solid #b8b8b8; }
+.partition-cell.active     { background: #7c3aed; }
+.partition-cell:hover:not(.active) { background: #ddd8f8; }
+
+.partition-slot-add {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.2em;
+    cursor: pointer;
+    font-size: 1.5em;
+    opacity: 0.35;
+    flex-shrink: 0;
+    padding: 0 0.4em;
+    align-self: center;
+}
+.partition-slot-add:hover { opacity: 0.85; }

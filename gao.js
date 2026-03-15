@@ -524,6 +524,278 @@ class PluckPad {
         }
     }
 }
+// ─────────────────────────────────────────────────────────────────────────────
+//  PartitionManager  — séquenceur multi-partitions (piste accord + picking)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function _partNewSlot () {
+    return { chord: null, pattern: Array(6).fill(null).map(() => Array(16).fill(false)) };
+}
+function _partNewItem () {
+    return { id: 'p' + Date.now().toString(36), name: 'Partition 1', bpm: 120, slots: [_partNewSlot()] };
+}
+function _partReviveChord (c) {
+    return c instanceof Chord
+        ? c
+        : new Chord(c.frets, c.name, c.root, c.type, c.desc, c.bass, c.notes, c.intervals);
+}
+
+class PartitionManager {
+    constructor (getStrings) {
+        this.getStrings    = getStrings;   // () => ComputedString[]
+        this.items         = [_partNewItem()];
+        this.activeId      = this.items[0].id;
+        this._seq          = null;
+        this._playing      = false;
+        this._looping      = true;
+        this.onStateChange = () => {};
+        this._domdest      = null;
+        this._playBtn      = null;
+        // injectés par Application
+        this.applyChord      = () => {};
+        this.getCurrentChord = () => null;
+    }
+
+    // ── persistence ──────────────────────────────────────────────────────────
+    get data () { return { items: this.items, activeId: this.activeId }; }
+    set data (d) {
+        this.items = (d.items || []).map(p => ({
+            ...p,
+            slots: (p.slots || []).map(s => ({ ...s, chord: s.chord ? _partReviveChord(s.chord) : null }))
+        }));
+        this.activeId = d.activeId || (this.items[0] && this.items[0].id) || null;
+        if (this._domdest) this._render();
+    }
+
+    _active () { return this.items.find(p => p.id === this.activeId) || null; }
+
+    // ── lecture ──────────────────────────────────────────────────────────────
+    play () {
+        this.stop();
+        const p = this._active();
+        if (!p) return;
+        Tone.Transport.bpm.value = p.bpm;
+        const strings = this.getStrings();
+        const totalUnits = p.slots.length * 16;
+
+        const events = Array.from({ length: totalUnits }, (_, unit) => {
+            const slot = p.slots[Math.floor(unit / 16)];
+            if (!slot || !slot.chord) return null;
+            const localUnit = unit % 16;
+            const toPlay = [];
+            for (let s = 0; s < strings.length; s++) {
+                if (!slot.pattern[s]?.[localUnit]) continue;
+                const fret = slot.chord.frets[s];
+                if (fret === 'x') continue;
+                const openIdx = allnotes.indexOf(strings[s].name);
+                if (openIdx === -1) continue;
+                const note = allnotes[openIdx + parseInt(fret)];
+                if (note) toPlay.push({ note, synth: strings[s].synth });
+            }
+            return toPlay.length ? toPlay : null;
+        });
+
+        this._seq = new Tone.Sequence((time, val) => {
+            if (val) val.forEach(v => v.synth.triggerAttack(v.note, time));
+        }, events, '16n');
+        this._seq.loop = this._looping;
+        this._seq.start(0);
+        Tone.Transport.start();
+        this._playing = true;
+        this._updatePlayBtn();
+    }
+
+    stop () {
+        if (this._seq) { this._seq.stop(); this._seq.dispose(); this._seq = null; }
+        Tone.Transport.stop();
+        this._playing = false;
+        this._updatePlayBtn();
+    }
+
+    _updatePlayBtn () {
+        if (this._playBtn) this._playBtn.textContent = this._playing ? '■' : '▶';
+    }
+
+    // ── DOM ───────────────────────────────────────────────────────────────────
+    mount (domdest) {
+        this._domdest = domdest;
+        this._render();
+    }
+
+    _render () {
+        const root = this._domdest;
+        if (!root) return;
+        root.innerHTML = '';
+
+        // ── onglets partitions ──
+        const tabs = document.createElement('div');
+        tabs.classList.add('partition-tabs');
+        this.items.forEach(p => {
+            const tab = document.createElement('div');
+            tab.classList.add('partition-tab');
+            if (p.id === this.activeId) tab.classList.add('active');
+
+            const nameEl = document.createElement('span');
+            nameEl.classList.add('partition-tab-name');
+            nameEl.textContent = p.name;
+            nameEl.contentEditable = 'true';
+            nameEl.addEventListener('click', e => { this.activeId = p.id; this._render(); e.stopPropagation(); });
+            nameEl.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); nameEl.blur(); } });
+            nameEl.addEventListener('blur', () => { p.name = nameEl.textContent.trim() || p.name; this.onStateChange(); });
+
+            const delBtn = document.createElement('span');
+            delBtn.classList.add('partition-tab-del');
+            delBtn.textContent = '×';
+            delBtn.addEventListener('click', e => {
+                e.stopPropagation();
+                if (this.items.length === 1) return;
+                this.stop();
+                this.items = this.items.filter(i => i.id !== p.id);
+                if (this.activeId === p.id) this.activeId = this.items[0].id;
+                this.onStateChange(); this._render();
+            });
+            tab.append(nameEl, delBtn);
+            tabs.appendChild(tab);
+        });
+        const addTab = document.createElement('div');
+        addTab.classList.add('partition-tab', 'partition-tab-add');
+        addTab.textContent = '+';
+        addTab.addEventListener('click', () => {
+            const np = _partNewItem(); this.items.push(np); this.activeId = np.id;
+            this.onStateChange(); this._render();
+        });
+        tabs.appendChild(addTab);
+        root.appendChild(tabs);
+
+        const p = this._active();
+        if (!p) return;
+
+        // ── contrôles BPM + lecture ──
+        const controls = document.createElement('div');
+        controls.classList.add('partition-controls');
+
+        const bpmLabel = document.createElement('label');
+        bpmLabel.classList.add('partition-bpm-label');
+        bpmLabel.textContent = 'BPM ';
+        const bpmInput = document.createElement('input');
+        bpmInput.type = 'number'; bpmInput.min = 40; bpmInput.max = 240; bpmInput.step = 1;
+        bpmInput.value = p.bpm;
+        bpmInput.classList.add('partition-bpm-input');
+        bpmInput.addEventListener('change', () => {
+            p.bpm = Math.max(40, Math.min(240, parseInt(bpmInput.value) || 120));
+            if (this._playing) Tone.Transport.bpm.value = p.bpm;
+            this.onStateChange();
+        });
+        bpmLabel.appendChild(bpmInput);
+
+        this._playBtn = document.createElement('button');
+        this._playBtn.classList.add('partition-play-btn');
+        this._updatePlayBtn();
+        this._playBtn.addEventListener('click', () => { if (this._playing) this.stop(); else this.play(); });
+
+        const loopBtn = document.createElement('button');
+        loopBtn.classList.add('partition-loop-btn');
+        loopBtn.classList.toggle('active', this._looping);
+        loopBtn.textContent = '↺';
+        loopBtn.title = 'Boucle';
+        loopBtn.addEventListener('click', () => {
+            this._looping = !this._looping;
+            loopBtn.classList.toggle('active', this._looping);
+            if (this._seq) this._seq.loop = this._looping;
+        });
+
+        controls.append(bpmLabel, this._playBtn, loopBtn);
+        root.appendChild(controls);
+
+        // ── timeline (mesures) ──
+        const timeline = document.createElement('div');
+        timeline.classList.add('partition-timeline');
+
+        p.slots.forEach((slot, slotIdx) => {
+            const slotEl = document.createElement('div');
+            slotEl.classList.add('partition-slot');
+
+            // piste accord
+            const chordHeader = document.createElement('div');
+            chordHeader.classList.add('partition-chord-header');
+            if (slot.chord) {
+                const fretsEl = document.createElement('div');
+                fretsEl.classList.add('partition-chord-frets');
+                slot.chord.frets.forEach(f => {
+                    const s = document.createElement('span');
+                    s.textContent = f === 'x' ? '×' : f;
+                    fretsEl.appendChild(s);
+                });
+                const nameEl2 = document.createElement('div');
+                nameEl2.classList.add('partition-chord-name');
+                nameEl2.textContent = slot.chord.name || '?';
+
+                const applyBtn = document.createElement('span');
+                applyBtn.classList.add('partition-chord-apply');
+                applyBtn.textContent = '⏎';
+                applyBtn.title = 'Appliquer sur la guitare';
+                applyBtn.addEventListener('click', e => { e.stopPropagation(); this.applyChord(slot.chord); });
+
+                const delBtn = document.createElement('span');
+                delBtn.classList.add('partition-chord-del');
+                delBtn.textContent = '×';
+                delBtn.addEventListener('click', e => {
+                    e.stopPropagation(); slot.chord = null; this.onStateChange(); this._render();
+                });
+                chordHeader.append(fretsEl, nameEl2, applyBtn, delBtn);
+            } else {
+                const assignBtn = document.createElement('div');
+                assignBtn.classList.add('partition-assign-btn');
+                assignBtn.innerHTML = '<i class="icon-attach-2"></i>';
+                assignBtn.title = "Assigner l'accord actuel";
+                assignBtn.addEventListener('click', () => {
+                    const c = this.getCurrentChord();
+                    if (c) { slot.chord = c; this.onStateChange(); this._render(); }
+                });
+                chordHeader.appendChild(assignBtn);
+            }
+
+            // grille de picking 6 × 16
+            const grid = document.createElement('div');
+            grid.classList.add('partition-grid');
+            for (let s = 0; s < 6; s++) {
+                const row = document.createElement('div');
+                row.classList.add('partition-grid-row');
+                for (let u = 0; u < 16; u++) {
+                    const cell = document.createElement('div');
+                    cell.classList.add('partition-cell');
+                    if (u % 4 === 0) cell.classList.add('beat-start');
+                    if (slot.pattern[s]?.[u]) cell.classList.add('active');
+                    cell.addEventListener('pointerdown', e => {
+                        e.preventDefault();
+                        if (!slot.pattern[s]) slot.pattern[s] = Array(16).fill(false);
+                        slot.pattern[s][u] = !slot.pattern[s][u];
+                        cell.classList.toggle('active', slot.pattern[s][u]);
+                        this.onStateChange();
+                        if (this._playing) { this.stop(); this.play(); }
+                    });
+                    row.appendChild(cell);
+                }
+                grid.appendChild(row);
+            }
+
+            slotEl.append(chordHeader, grid);
+            timeline.appendChild(slotEl);
+        });
+
+        // bouton ajout de mesure
+        const addSlot = document.createElement('div');
+        addSlot.classList.add('partition-slot-add');
+        addSlot.textContent = '+';
+        addSlot.title = 'Ajouter une mesure';
+        addSlot.addEventListener('click', () => { p.slots.push(_partNewSlot()); this.onStateChange(); this._render(); });
+        timeline.appendChild(addSlot);
+        root.appendChild(timeline);
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 class ChordWizard {
 
     constructor (onApplyChord = () => {}, onStateChange = () => {}) {
@@ -767,11 +1039,7 @@ class ChordWizard {
                     }
                 }
                 if (requireOpen && !current.some(f => f === 0)) return;
-                if (noInteriorMutes) {
-                    const first = current.findIndex(f => f !== 'x');
-                    const last  = current.length - 1 - [...current].reverse().findIndex(f => f !== 'x');
-                    if (first !== -1 && current.slice(first, last + 1).some(f => f === 'x')) return;
-                }
+                if (noInteriorMutes && this._hasInteriorMute(current)) return;
                 voicings.push({ frets: [...current], notes: [...noteSet], intervals: voicingIntervals, span });
                 return;
             }
@@ -819,19 +1087,31 @@ class ChordWizard {
         return unique;
     }
 
+    // ── helpers privés ──────────────────────────────────────
+    // Retourne [{basenote, octavednote}|null] pour chaque corde
+    _getFretNotes (frets) {
+        const tuning = this._instrument?.tuning;
+        if (!tuning) return frets.map(() => null);
+        return frets.map((fret, i) => {
+            if (fret === 'x') return null;
+            const openIdx = allnotes.indexOf(tuning[i]);
+            const octavednote = allnotes[openIdx + parseInt(fret)];
+            return octavednote ? { basenote: octavednote.replace(/\d/g, ''), octavednote } : null;
+        });
+    }
+    // Vrai si une corde mutée se trouve entre deux cordes jouées
+    _hasInteriorMute (frets) {
+        const first = frets.findIndex(f => f !== 'x');
+        if (first === -1) return false;
+        const last = frets.length - 1 - [...frets].reverse().findIndex(f => f !== 'x');
+        return frets.slice(first, last + 1).some(f => f === 'x');
+    }
+
     // Reconstruction non-mutante : retourne {root, chordtypeindex} du meilleur score pour un voicing
     _guessFromVoicing (voicing) {
         if (!this._instrument) return null;
-        const { tuning } = this._instrument;
 
-        const heldNotes = [];
-        voicing.frets.forEach((fret, i) => {
-            if (fret === 'x') return;
-            const openIdx = allnotes.indexOf(tuning[i]);
-            const octavednote = allnotes[openIdx + fret];
-            if (!octavednote) return;
-            heldNotes.push({ basenote: octavednote.replace(/\d/g, ''), octavednote });
-        });
+        const heldNotes = this._getFretNotes(voicing.frets).filter(Boolean);
         if (heldNotes.length === 0) return null;
 
         const basenotes = [...new Set(heldNotes.map(n => n.basenote))];
@@ -862,29 +1142,23 @@ class ChordWizard {
 
     // Calcule les propriétés notables d'un voicing pour un accord donné
     _voicingProps (v, root, cti) {
-        const tuning = this._instrument.tuning;
         const chordIntervals = chordtypes[cti].intervals;
 
         // intervalle de chaque corde jouée (null si mutée)
-        const ivList = v.frets.map((fret, i) => {
-            if (fret === 'x') return null;
-            const note = allnotes[allnotes.indexOf(tuning[i]) + parseInt(fret)];
-            return note ? this.getinterval(root, note.replace(/\d/g, '')) : null;
-        });
+        const ivList = this._getFretNotes(v.frets)
+            .map(fn => fn ? this.getinterval(root, fn.basenote) : null);
         const playedIvs   = ivList.filter(x => x !== null);
         const playedCount = playedIvs.length;
-        const semitones   = ivList.filter(x => x !== null).map(iv => intervals.indexOf(iv));
+        const semitones   = playedIvs.map(iv => intervals.indexOf(iv));
 
         // 1. Intervalles en ordre croissant (bass → treble)
         const ordered = semitones.every((s, i) => i === 0 || s >= semitones[i - 1]);
 
         // 2. Pas de corde mutée intérieure (pertinent à partir de 4 cordes jouées)
-        const first = v.frets.findIndex(f => f !== 'x');
-        const last  = v.frets.length - 1 - [...v.frets].reverse().findIndex(f => f !== 'x');
-        const noMuteGap = playedCount >= 4 && (first === -1 || !v.frets.slice(first, last + 1).some(f => f === 'x'));
+        const noGapRaw    = !this._hasInteriorMute(v.frets);
+        const noMuteGap   = playedCount >= 4 && noGapRaw;
 
         // 3. Triade stricte (3 cordes consécutives) ou simple (3 cordes avec discontinuité)
-        const noGapRaw  = first === -1 || !v.frets.slice(first, last + 1).some(f => f === 'x');
         const strictTriad = playedCount === 3 && noGapRaw;
         const triad       = playedCount === 3 && !noGapRaw;
 
@@ -1776,6 +2050,41 @@ class Application {
                     },
                     this.storage
                 );
+            }
+        });
+
+        // ── Partitions ────────────────────────────────────────────────────────
+        const partitionsdetails = document.createElement('details');
+        partitionsdetails.id = 'partitions-details';
+        const partitionssummary = document.createElement('summary');
+        partitionssummary.innerHTML = '♩ Partitions';
+        partitionsdetails.appendChild(partitionssummary);
+        const partitionscontent = document.createElement('div');
+        partitionscontent.id = 'partitions-content';
+        partitionsdetails.appendChild(partitionscontent);
+        this.chordlibrary.appendChild(partitionsdetails);
+        syncOpen(partitionsdetails, 'partitions');
+
+        this.partitions = new PartitionManager(() => this.computedguitar.strings);
+        this.partitions.applyChord = (chord) => {
+            for (let i = 0; i < chord.frets.length; i++)
+                this.computedguitar.strings[i].forcehold(chord.frets[i]);
+            this.groundrender.render();
+        };
+        this.partitions.getCurrentChord = () => {
+            const res = this.chordwizard._result;
+            if (!res || res.notes.length === 0) return null;
+            if (res.founded.length > 0) return res.founded[0].chord;
+            return new Chord(res.frets, '?', '', '', '', '', res.notes.map(n => n.octavednote), []);
+        };
+
+        const savedPartitions = this.storage.get('partitions', null);
+        if (savedPartitions) this.partitions.data = savedPartitions;  // _domdest null → pas de rendu prématuré
+        this.partitions.onStateChange = () => { this.storage.set('partitions', this.partitions.data); };
+
+        partitionsdetails.addEventListener('toggle', () => {
+            if (partitionsdetails.open) {
+                if (!this.partitions._domdest) this.partitions.mount(partitionscontent);
             }
         });
 
