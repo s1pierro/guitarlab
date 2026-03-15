@@ -1660,7 +1660,7 @@ class Application {
         this.model = new GuitarModel(stringNames, onStateChange);
         this.computedguitar = new ComputedGuitar(sguitar, this.neckboard, this.groundrender, this.model);
         this.chordwizard = new ChordWizard(
-            (chord) => { for (let i = 0; i < chord.frets.length; i++) this.computedguitar.strings[i].forcehold(chord.frets[i]); },
+            (chord) => { for (let i = 0; i < chord.frets.length; i++) this.computedguitar.strings[i].forcehold(chord.frets[i]); this.groundrender.render(); },
             onStateChange
         );
         this.chordwizard.mountPinBoard(this.favctnr);
