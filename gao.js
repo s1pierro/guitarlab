@@ -677,22 +677,39 @@ class PartitionManager {
         const controls = document.createElement('div');
         controls.classList.add('partition-controls');
 
-        const bpmLabel = document.createElement('label');
-        bpmLabel.classList.add('partition-bpm-label');
-        bpmLabel.textContent = 'BPM ';
-        const bpmInput = document.createElement('input');
-        bpmInput.type = 'number'; bpmInput.min = 40; bpmInput.max = 240; bpmInput.step = 1;
-        bpmInput.value = p.bpm;
-        bpmInput.classList.add('partition-bpm-input');
-        const applyBpm = () => {
-            const v = Math.max(40, Math.min(240, parseInt(bpmInput.value) || 120));
+        const bpmWrap = document.createElement('div');
+        bpmWrap.classList.add('partition-bpm-wrap');
+
+        const bpmDown = document.createElement('button');
+        bpmDown.classList.add('partition-bpm-btn');
+        bpmDown.textContent = '−';
+
+        const bpmDisplay = document.createElement('span');
+        bpmDisplay.classList.add('partition-bpm-display');
+        bpmDisplay.textContent = p.bpm;
+
+        const bpmUp = document.createElement('button');
+        bpmUp.classList.add('partition-bpm-btn');
+        bpmUp.textContent = '+';
+
+        const applyBpm = (v) => {
+            v = Math.max(40, Math.min(240, v));
             p.bpm = v;
+            bpmDisplay.textContent = v;
             Tone.Transport.bpm.value = v;
             this.onStateChange();
         };
-        bpmInput.addEventListener('input',  applyBpm);
-        bpmInput.addEventListener('change', applyBpm);
-        bpmLabel.appendChild(bpmInput);
+
+        bpmDown.addEventListener('click', () => applyBpm(p.bpm - 5));
+        bpmUp.addEventListener('click',   () => applyBpm(p.bpm + 5));
+
+        // tap sur le display : saisie directe
+        bpmDisplay.addEventListener('click', () => {
+            const v = parseInt(prompt('BPM (40–240)', p.bpm));
+            if (!isNaN(v)) applyBpm(v);
+        });
+
+        bpmWrap.append(bpmDown, bpmDisplay, bpmUp);
 
         this._playBtn = document.createElement('button');
         this._playBtn.classList.add('partition-play-btn');
@@ -710,7 +727,7 @@ class PartitionManager {
             if (this._seq) this._seq.loop = this._looping;
         });
 
-        controls.append(bpmLabel, this._playBtn, loopBtn);
+        controls.append(bpmWrap, this._playBtn, loopBtn);
         root.appendChild(controls);
 
         // ── timeline (mesures) ──
@@ -1656,7 +1673,7 @@ class GroundRender {
             if (percentComplete < 100) {
                 elem.textContent = Math.round(percentComplete) + ' %';
             } else {
-                elem.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.0.1</span>';
+                elem.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.1.0</span>';
             }
         }
     }
@@ -1826,7 +1843,7 @@ class Application {
         document.body.appendChild (this.appbody);
         this.appstamp = document.createElement('div');
         this.appstamp.id = 'app-stamp';
-        this.appstamp.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.0.1</span>';
+        this.appstamp.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.1.0</span>';
         this.appbody.appendChild (this.appstamp);
 
         this.touchlayer = document.createElement('div');

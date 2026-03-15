@@ -956,20 +956,33 @@ div.statebar {
     background: #fafafa;
     border-bottom: 1px solid #eee;
 }
-.partition-bpm-label {
-    font-size: 0.78em;
-    color: #666;
+.partition-bpm-wrap {
     display: flex;
     align-items: center;
-    gap: 0.2em;
-}
-.partition-bpm-input {
-    width: 3.5em;
-    font-size: 0.85em;
+    gap: 0;
     border: 1px solid #ccc;
-    border-radius: 0.25em;
-    padding: 0.1em 0.2em;
+    border-radius: 0.4em;
+    overflow: hidden;
+}
+.partition-bpm-btn {
+    border: none;
+    background: #e8e8e8;
+    font-size: 1.1em;
+    padding: 0.15em 0.55em;
+    cursor: pointer;
+    line-height: 1;
+}
+.partition-bpm-btn:hover { background: #d0d0d0; }
+.partition-bpm-display {
+    font-size: 0.85em;
+    font-family: monospace;
+    font-weight: bold;
+    padding: 0.15em 0.5em;
+    min-width: 2.8em;
     text-align: center;
+    background: #fff;
+    cursor: pointer;
+    user-select: none;
 }
 .partition-play-btn,
 .partition-loop-btn {
