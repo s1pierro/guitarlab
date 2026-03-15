@@ -795,6 +795,26 @@ class PartitionManager {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Constantes de catalogue — définies une seule fois au niveau du module
+
+const VOICING_BADGES = [
+    { key: 'ordered',    sym: '↑', title: 'Intervalles en ordre croissant',         cls: 'badge-ordered'  },
+    { key: 'noMuteGap',  sym: '▬', title: 'Pas de corde mutée intérieure',          cls: 'badge-nomute'   },
+    { key: 'strictTriad',sym: '▲', title: 'Triade stricte — 3 cordes consécutives', cls: 'badge-triad'    },
+    { key: 'triad',      sym: '△', title: 'Triade — 3 cordes avec discontinuité',   cls: 'badge-triad'    },
+    { key: 'complete',   sym: '★', title: 'Tous les intervalles présents',          cls: 'badge-complete' },
+    { key: 'unique',     sym: '◇', title: 'Aucune note répétée',                    cls: 'badge-unique'   },
+];
+
+function _makeBadgeSpan (sym, cls, title) {
+    const b = document.createElement('span');
+    b.classList.add('vc-badge', cls);
+    b.textContent = sym;
+    if (title) b.title = title;
+    return b;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 class ChordWizard {
 
@@ -1190,15 +1210,6 @@ class ChordWizard {
         };
         const saveState = () => { if (storage) storage.set('catalog-filters', state); };
 
-        const BADGES = [
-            { key: 'ordered',    sym: '↑', title: 'Intervalles en ordre croissant',          cls: 'badge-ordered'  },
-            { key: 'noMuteGap',  sym: '▬', title: 'Pas de corde mutée intérieure',           cls: 'badge-nomute'   },
-            { key: 'strictTriad',sym: '▲', title: 'Triade stricte — 3 cordes consécutives',  cls: 'badge-triad'    },
-            { key: 'triad',      sym: '△', title: 'Triade — 3 cordes avec discontinuité',    cls: 'badge-triad'    },
-            { key: 'complete',   sym: '★', title: 'Tous les intervalles présents',           cls: 'badge-complete' },
-            { key: 'unique',     sym: '◇', title: 'Aucune note répétée',                     cls: 'badge-unique'   },
-        ];
-
         const makeCard = (v, chordName) => {
             const card = document.createElement('div');
             card.classList.add('voicing-card');
@@ -1210,14 +1221,8 @@ class ChordWizard {
             const badgesDiv = document.createElement('div');
             badgesDiv.classList.add('vc-badges');
             const props = this._voicingProps(v, state.root, state.chordTypeIndex);
-            BADGES.forEach(({ key, sym, title, cls }) => {
-                if (props[key]) {
-                    const b = document.createElement('span');
-                    b.classList.add('vc-badge', cls);
-                    b.title = title;
-                    b.textContent = sym;
-                    badgesDiv.appendChild(b);
-                }
+            VOICING_BADGES.forEach(({ key, sym, title, cls }) => {
+                if (props[key]) badgesDiv.appendChild(_makeBadgeSpan(sym, cls, title));
             });
 
             card.append(fretsDiv, badgesDiv);
@@ -1276,15 +1281,12 @@ class ChordWizard {
             // légende en bas de la zone scrollable
             const legend = document.createElement('div');
             legend.classList.add('catalog-legend');
-            BADGES.forEach(({ sym, title, cls }) => {
+            VOICING_BADGES.forEach(({ sym, title, cls }) => {
                 const row = document.createElement('div');
                 row.classList.add('catalog-legend-row');
-                const badge = document.createElement('span');
-                badge.classList.add('vc-badge', cls);
-                badge.textContent = sym;
-                const label = document.createElement('span');
-                label.textContent = title;
-                row.append(badge, label);
+                const lbl = document.createElement('span');
+                lbl.textContent = title;
+                row.append(_makeBadgeSpan(sym, cls, ''), lbl);
                 legend.appendChild(row);
             });
             grid.appendChild(legend);
