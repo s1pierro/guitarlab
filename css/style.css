@@ -761,7 +761,9 @@ div.statebar {
     gap: 0.35em;
     padding: 0.35em 0.4em;
     flex: 1;
+    scrollbar-width: none;
 }
+.catalog-pos-cards::-webkit-scrollbar { display: none; }
 .catalog-filters {
     display: flex;
     flex-wrap: wrap;
