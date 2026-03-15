@@ -858,6 +858,41 @@ class ChordWizard {
         return best;
     }
 
+    // Calcule les propriétés notables d'un voicing pour un accord donné
+    _voicingProps (v, root, cti) {
+        const tuning = this._instrument.tuning;
+        const chordIntervals = chordtypes[cti].intervals;
+
+        // intervalle de chaque corde jouée (null si mutée)
+        const ivList = v.frets.map((fret, i) => {
+            if (fret === 'x') return null;
+            const note = allnotes[allnotes.indexOf(tuning[i]) + parseInt(fret)];
+            return note ? this.getinterval(root, note.replace(/\d/g, '')) : null;
+        });
+        const playedIvs   = ivList.filter(x => x !== null);
+        const playedCount = playedIvs.length;
+        const semitones   = ivList.filter(x => x !== null).map(iv => intervals.indexOf(iv));
+
+        // 1. Intervalles en ordre croissant (bass → treble)
+        const ordered = semitones.every((s, i) => i === 0 || s >= semitones[i - 1]);
+
+        // 2. Pas de corde mutée intérieure
+        const first = v.frets.findIndex(f => f !== 'x');
+        const last  = v.frets.length - 1 - [...v.frets].reverse().findIndex(f => f !== 'x');
+        const noMuteGap = first === -1 || !v.frets.slice(first, last + 1).some(f => f === 'x');
+
+        // 3. Triade (exactement 3 cordes)
+        const triad = playedCount === 3;
+
+        // 4. Tous les intervalles de l'accord présents
+        const complete = chordIntervals.every(iv => playedIvs.includes(iv));
+
+        // 5. Aucune note répétée
+        const unique = new Set(playedIvs).size === playedCount;
+
+        return { ordered, noMuteGap, triad, complete, unique };
+    }
+
     printCatalog (domdest, onApplyVoicing = () => {}, storage = null) {
         if (!this._instrument) return;
         domdest.innerHTML = '';
@@ -877,12 +912,36 @@ class ChordWizard {
         };
         const saveState = () => { if (storage) storage.set('catalog-filters', state); };
 
+        const BADGES = [
+            { key: 'ordered',   sym: '↑', title: 'Intervalles en ordre croissant',  cls: 'badge-ordered'  },
+            { key: 'noMuteGap', sym: '▬', title: 'Pas de corde mutée intérieure',   cls: 'badge-nomute'   },
+            { key: 'triad',     sym: '△', title: 'Triade — 3 cordes jouées',        cls: 'badge-triad'    },
+            { key: 'complete',  sym: '★', title: 'Tous les intervalles présents',   cls: 'badge-complete' },
+            { key: 'unique',    sym: '◇', title: 'Aucune note répétée',             cls: 'badge-unique'   },
+        ];
+
         const makeCard = (v, chordName) => {
             const card = document.createElement('div');
             card.classList.add('voicing-card');
-            card.innerHTML =
-                '<div class="vc-frets">' + v.frets.join(' ') + '</div>' +
-                '<div class="vc-span">span ' + v.span + '</div>';
+
+            const fretsDiv = document.createElement('div');
+            fretsDiv.classList.add('vc-frets');
+            fretsDiv.textContent = v.frets.join(' ');
+
+            const badgesDiv = document.createElement('div');
+            badgesDiv.classList.add('vc-badges');
+            const props = this._voicingProps(v, state.root, state.chordTypeIndex);
+            BADGES.forEach(({ key, sym, title, cls }) => {
+                if (props[key]) {
+                    const b = document.createElement('span');
+                    b.classList.add('vc-badge', cls);
+                    b.title = title;
+                    b.textContent = sym;
+                    badgesDiv.appendChild(b);
+                }
+            });
+
+            card.append(fretsDiv, badgesDiv);
             card.addEventListener('click', () => onApplyVoicing(v, chordName));
             return card;
         };
