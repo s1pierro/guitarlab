@@ -100,10 +100,15 @@
     bottom: 0.6em;
     left: 0.5em;
     font-weight: bold;
-    font-size: 0.75em;
-    text-shadow: 0 0 2px #000c;
+    font-size: 0.82em;
     color: #fff;
     z-index: 50;
+    background: #000000cc;
+    border-radius: 1em;
+    padding: 0.25em 0.65em;
+    display: flex;
+    align-items: center;
+    gap: 0.35em;
 }
 .p-pad {
     position: relative;
@@ -1083,8 +1088,8 @@ div.statebar {
 
 /* version stamp */
 .app-version {
-    font-size: 0.7em;
-    opacity: 0.55;
-    margin-left: 0.3em;
+    font-size: 0.85em;
+    opacity: 0.75;
     font-family: monospace;
+    letter-spacing: 0.05em;
 }
