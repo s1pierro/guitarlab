@@ -97,16 +97,13 @@
 }
 #app-stamp {
     position: absolute;
-    display: flex;
-    width: 100vw;
-    height: 1em;
-    bottom: calc(1vh + 3.25em + env(safe-area-inset-bottom, 0px));
+    bottom: 0.6em;
+    left: 0.5em;
     font-weight: bold;
+    font-size: 0.75em;
     text-shadow: 0 0 2px #000c;
     color: #fff;
-    left: 0.25em;
     z-index: 50;
-    padding: 0;
 }
 .p-pad {
     position: relative;
