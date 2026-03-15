@@ -1,9 +1,9 @@
 // Service Worker pour la mise en cache des ressources de l'application
 
-const cacheName = 'gao-1.1';
+const cacheName = 'gao-1.2';
+
+// Seuls les assets statiques lourds sont mis en cache (audio, images)
 const cacheFiles = [
-  'index.html',
-  'manifest.json',
   'assets/icon.svg',
   'assets/icon-48.png',
   'assets/icon-96.png',
@@ -15,9 +15,10 @@ const cacheFiles = [
   'assets/B3.mp3',
   'assets/D3.mp3',
   'assets/E2.mp3',
-  'js/Tone.js',
-  'js/Tone.js.map'
 ];
+
+// Extensions servies systématiquement depuis le réseau (jamais depuis le cache)
+const noCacheExtensions = ['.html', '.js', '.css', '.json'];
 
 self.addEventListener('install', function (event) {
   event.waitUntil(
@@ -29,6 +30,16 @@ self.addEventListener('install', function (event) {
 });
 
 self.addEventListener('fetch', function (event) {
+  const url = new URL(event.request.url);
+  const noCache = noCacheExtensions.some(ext => url.pathname.endsWith(ext));
+
+  if (noCache) {
+    // Toujours réseau pour HTML / JS / CSS / JSON
+    event.respondWith(fetch(event.request));
+    return;
+  }
+
+  // Assets statiques : cache en priorité, réseau en fallback
   event.respondWith(
     caches.match(event.request).then(function (response) {
       return response || fetch(event.request);
@@ -47,7 +58,6 @@ self.addEventListener('activate', function (event) {
         })
       );
     }).then(function () {
-      // Force reload de tous les onglets pour qu'ils utilisent le nouveau cache
       return self.clients.matchAll({ type: 'window' }).then(function (clients) {
         clients.forEach(function (client) { client.navigate(client.url); });
       });
