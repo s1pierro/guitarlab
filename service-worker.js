@@ -1,6 +1,6 @@
 // Service Worker pour la mise en cache des ressources de l'application
 
-const cacheName = 'gao-1.0';
+const cacheName = 'gao-1.1';
 const cacheFiles = [
   'index.html',
   'manifest.json',
@@ -46,6 +46,11 @@ self.addEventListener('activate', function (event) {
           }
         })
       );
+    }).then(function () {
+      // Force reload de tous les onglets pour qu'ils utilisent le nouveau cache
+      return self.clients.matchAll({ type: 'window' }).then(function (clients) {
+        clients.forEach(function (client) { client.navigate(client.url); });
+      });
     })
   );
   self.clients.claim();
