@@ -578,11 +578,12 @@ class PartitionManager {
         const strings = this.getStrings();
         const totalUnits = p.slots.length * 16;
 
-        const events = Array.from({ length: totalUnits }, (_, unit) => {
+        // Tone.Part : liste de [time, value] sans ambiguïté avec les sous-patterns
+        const partEvents = [];
+        for (let unit = 0; unit < totalUnits; unit++) {
             const slot = p.slots[Math.floor(unit / 16)];
-            if (!slot || !slot.chord) return null;
+            if (!slot || !slot.chord) continue;
             const localUnit = unit % 16;
-            const toPlay = [];
             for (let s = 0; s < strings.length; s++) {
                 if (!slot.pattern[s]?.[localUnit]) continue;
                 const fret = slot.chord.frets[s];
@@ -590,15 +591,17 @@ class PartitionManager {
                 const openIdx = allnotes.indexOf(strings[s].name);
                 if (openIdx === -1) continue;
                 const note = allnotes[openIdx + parseInt(fret)];
-                if (note) toPlay.push({ note, synth: strings[s].synth });
+                if (note) partEvents.push([unit + '*16n', { note, synth: strings[s].synth }]);
             }
-            return toPlay.length ? toPlay : null;
-        });
+        }
 
-        this._seq = new Tone.Sequence((time, val) => {
-            if (val) val.forEach(v => v.synth.triggerAttack(v.note, time));
-        }, events, '16n');
+        if (partEvents.length === 0) return;
+
+        this._seq = new Tone.Part((time, val) => {
+            val.synth.triggerAttack(val.note, time);
+        }, partEvents);
         this._seq.loop = this._looping;
+        this._seq.loopEnd = totalUnits + '*16n';
         this._seq.start(0);
         Tone.Transport.start();
         this._playing = true;
