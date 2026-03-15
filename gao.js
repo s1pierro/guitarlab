@@ -878,14 +878,15 @@ class ChordWizard {
         // 1. Intervalles en ordre croissant (bass → treble)
         const ordered = semitones.every((s, i) => i === 0 || s >= semitones[i - 1]);
 
-        // 2. Pas de corde mutée intérieure
+        // 2. Pas de corde mutée intérieure (pertinent à partir de 4 cordes jouées)
         const first = v.frets.findIndex(f => f !== 'x');
         const last  = v.frets.length - 1 - [...v.frets].reverse().findIndex(f => f !== 'x');
-        const noMuteGap = first === -1 || !v.frets.slice(first, last + 1).some(f => f === 'x');
+        const noMuteGap = playedCount >= 4 && (first === -1 || !v.frets.slice(first, last + 1).some(f => f === 'x'));
 
         // 3. Triade stricte (3 cordes consécutives) ou simple (3 cordes avec discontinuité)
-        const strictTriad = playedCount === 3 && noMuteGap;
-        const triad       = playedCount === 3 && !noMuteGap;
+        const noGapRaw  = first === -1 || !v.frets.slice(first, last + 1).some(f => f === 'x');
+        const strictTriad = playedCount === 3 && noGapRaw;
+        const triad       = playedCount === 3 && !noGapRaw;
 
         // 4. Tous les intervalles de l'accord présents
         const complete = chordIntervals.every(iv => playedIvs.includes(iv));
