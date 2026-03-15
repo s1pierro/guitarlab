@@ -162,12 +162,66 @@
 
 }
 
-.chord-set {
+.chord-sets-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3em;
+    padding: 0.4em 0.5em;
+}
+.chord-set-item {
+    border: 1px solid #ddd;
+    border-radius: 0.4em;
+    overflow: hidden;
+}
+.chord-set-item.active {
+    border-color: #7a9cdf;
+}
+.chord-set-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.3em 0.5em;
+    background: #f4f4f4;
+    cursor: pointer;
+    user-select: none;
+}
+.chord-set-item.active .chord-set-header {
+    background: #dce8ff;
+}
+.chord-set-name {
+    flex: 1;
+    font-size: 0.82em;
+    font-weight: 600;
+    outline: none;
+    min-width: 0;
+    cursor: text;
+}
+.chord-set-del {
+    color: #aaa;
+    font-size: 1em;
+    line-height: 1;
+    padding: 0 0.2em;
+    cursor: pointer;
+}
+.chord-set-del:active { color: #e44; }
+.chord-set-grid {
     display: flex;
     flex-wrap: wrap;
     gap: 0.3em;
     padding: 0.4em 0.5em;
 }
+.chord-set-add {
+    margin-top: 0.2em;
+    padding: 0.3em 0.6em;
+    font-size: 0.78em;
+    background: none;
+    border: 1px dashed #bbb;
+    border-radius: 0.4em;
+    cursor: pointer;
+    color: #666;
+    font-family: inherit;
+}
+.chord-set-add:active { background: #eee; }
 
 .computed-string-container {
     display: inline-block;

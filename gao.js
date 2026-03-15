@@ -338,64 +338,122 @@ class ChordPinBoard {
         this.onApplyChord = onApplyChord;
         this.onStateChange = onStateChange;
         this.domctnr = document.createElement('div');
-        this.domctnr.classList.add('chord-set');
-        this.pinnedchords = [];
+        this.domctnr.classList.add('chord-sets-container');
+        this.sets = [{ id: 's0', name: 'Set 1', chords: [] }];
+        this.activeSetId = 's0';
     }
-    mount (domdest) {
-        domdest.appendChild(this.domctnr);
-    }
-    get chords () { return this.pinnedchords; }
-    set chords (list) {
-        this.pinnedchords = list.map(c => c instanceof Chord ? c :
-            new Chord(c.frets, c.name, c.root, c.type, c.desc, c.bass, c.notes, c.intervals));
-        this.update();
-    }
-    pinchord (chord) {
-      if ( this.has(chord))
-        this.kickchord(chord);
-      else {
-        this.pinnedchords.push(chord);
-        this.update();
-      }
-    }
-    pushchord (chord) {
-        this.onApplyChord(chord);
-    }
-    kickchord (chord) {
-        //-console.log('kick chord');
-        //-console.log(chord);
-        let comp = chord.frets.join('');
-        for (let i = 0; i < this.pinnedchords.length ; i++) {
-          if ( this.pinnedchords[i].comp == comp )
-            this.pinnedchords.splice(i, 1)
-        }
+
+    _uid () { return 's' + Date.now().toString(36); }
+    _revive (c) { return c instanceof Chord ? c : new Chord(c.frets, c.name, c.root, c.type, c.desc, c.bass, c.notes, c.intervals); }
+    _activeSet () { return this.sets.find(s => s.id === this.activeSetId) ?? this.sets[0] ?? null; }
+
+    mount (domdest) { domdest.appendChild(this.domctnr); }
+
+    // ── persistance ──
+    get data () { return { sets: this.sets, activeSetId: this.activeSetId }; }
+    set data (d) {
+        this.sets = (d.sets || []).map(s => ({ ...s, chords: (s.chords || []).map(c => this._revive(c)) }));
+        this.activeSetId = d.activeSetId ?? (this.sets[0]?.id ?? 's0');
         this.update();
     }
 
-    has (chord) {
-      for (let i = 0; i < this.pinnedchords.length; i++) {
-        if ( this.pinnedchords[i].sameAs(chord) )
-          return true
-      }
-      return false;
+    // ── compat migration ancien format (tableau plat) ──
+    set chords (list) {
+        this.sets[0].chords = list.map(c => this._revive(c));
+        this.update();
     }
+
+    // ── gestion des sets ──
+    addSet () {
+        const id = this._uid();
+        this.sets.push({ id, name: 'Set ' + (this.sets.length + 1), chords: [] });
+        this.activeSetId = id;
+        this.update();
+    }
+    removeSet (id) {
+        this.sets = this.sets.filter(s => s.id !== id);
+        if (this.sets.length === 0) { this.sets = [{ id: 's0', name: 'Set 1', chords: [] }]; }
+        if (this.activeSetId === id) this.activeSetId = this.sets[0].id;
+        this.update();
+    }
+
+    // ── gestion des accords ──
+    pinchord (chord) {
+        const s = this._activeSet(); if (!s) return;
+        const idx = s.chords.findIndex(c => c.sameAs(chord));
+        if (idx !== -1) s.chords.splice(idx, 1); else s.chords.push(chord);
+        this.update();
+    }
+    has (chord) {
+        const s = this._activeSet();
+        return s ? s.chords.some(c => c.sameAs(chord)) : false;
+    }
+    pushchord (chord) { this.onApplyChord(chord); }
+
+    // ── rendu ──
     update () {
         this.domctnr.innerHTML = '';
-        for (let i = 0; i < this.pinnedchords.length; i++) {
-            const chord = this.pinnedchords[i];
-            const card = document.createElement('div');
-            card.classList.add('voicing-card');
-            card.innerHTML =
-                '<div class="vc-frets">' + chord.frets.join(' ') + '</div>' +
-                '<div class="vc-span">' + chord.name + '</div>';
-            card.addEventListener('click', () => this.pushchord(chord), true);
-            const del = document.createElement('span');
-            del.classList.add('vc-del');
-            del.textContent = '×';
-            del.addEventListener('click', (e) => { e.stopPropagation(); this.kickchord(chord); }, true);
-            card.appendChild(del);
-            this.domctnr.appendChild(card);
-        }
+        this.sets.forEach(set => {
+            const wrap = document.createElement('div');
+            wrap.classList.add('chord-set-item');
+            if (set.id === this.activeSetId) wrap.classList.add('active');
+
+            // en-tête : nom éditable + bouton suppression
+            const header = document.createElement('div');
+            header.classList.add('chord-set-header');
+            header.addEventListener('click', () => { this.activeSetId = set.id; this.update(); });
+
+            const nameEl = document.createElement('span');
+            nameEl.classList.add('chord-set-name');
+            nameEl.textContent = set.name;
+            nameEl.contentEditable = 'true';
+            nameEl.addEventListener('click', e => e.stopPropagation());
+            nameEl.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); nameEl.blur(); } });
+            nameEl.addEventListener('blur', () => {
+                set.name = nameEl.textContent.trim() || set.name;
+                this.onStateChange();
+            });
+
+            const delBtn = document.createElement('span');
+            delBtn.classList.add('chord-set-del');
+            delBtn.textContent = '×';
+            delBtn.addEventListener('click', e => { e.stopPropagation(); this.removeSet(set.id); });
+
+            header.append(nameEl, delBtn);
+
+            // grille d'accords
+            const grid = document.createElement('div');
+            grid.classList.add('chord-set-grid');
+            set.chords.forEach(chord => {
+                const card = document.createElement('div');
+                card.classList.add('voicing-card');
+                card.innerHTML =
+                    '<div class="vc-frets">' + chord.frets.join(' ') + '</div>' +
+                    '<div class="vc-span">' + chord.name + '</div>';
+                card.addEventListener('click', () => this.pushchord(chord), true);
+                const del = document.createElement('span');
+                del.classList.add('vc-del');
+                del.textContent = '×';
+                del.addEventListener('click', e => {
+                    e.stopPropagation();
+                    set.chords = set.chords.filter(c => !c.sameAs(chord));
+                    this.update();
+                }, true);
+                card.appendChild(del);
+                grid.appendChild(card);
+            });
+
+            wrap.append(header, grid);
+            this.domctnr.appendChild(wrap);
+        });
+
+        // bouton nouveau set
+        const addBtn = document.createElement('button');
+        addBtn.classList.add('chord-set-add');
+        addBtn.textContent = '+ nouveau set';
+        addBtn.addEventListener('click', () => this.addSet());
+        this.domctnr.appendChild(addBtn);
+
         this.onStateChange();
     }
 }
@@ -1499,7 +1557,7 @@ class Application {
         this.pinboarddetails = document.createElement('details');
         this.pinboarddetails.id = 'pinboard-details';
         const pinboardsummary = document.createElement('summary');
-        pinboardsummary.innerHTML = '<i class="icon-attach-2"></i> Favoris';
+        pinboardsummary.innerHTML = '<i class="icon-attach-2"></i> Bibliothèque';
         this.pinboarddetails.appendChild(pinboardsummary);
         this.favctnr = document.createElement('div');
         this.favctnr.id = 'fav-ctnr';
@@ -1634,12 +1692,17 @@ class Application {
                 this.computedguitar.strings[i].forcehold(savedFrets[i]);
         }
 
-        // ── restauration pinboard ──
-        const savedChords = this.storage.get('pinboard', []);
-        if (savedChords.length) this.chordwizard.chordpinboard.chords = savedChords;
-        // persistance pinboard à chaque mutation
+        // ── restauration bibliothèque (migration depuis ancien format plat) ──
+        const savedSets = this.storage.get('chord-sets', null);
+        if (savedSets) {
+            this.chordwizard.chordpinboard.data = savedSets;
+        } else {
+            const legacy = this.storage.get('pinboard', []);
+            if (legacy.length) this.chordwizard.chordpinboard.chords = legacy;
+        }
+        // persistance à chaque mutation
         this.chordwizard.chordpinboard.onStateChange = () => {
-            this.storage.set('pinboard', this.chordwizard.chordpinboard.chords);
+            this.storage.set('chord-sets', this.chordwizard.chordpinboard.data);
         };
 
         // catalogue — instrument identique à la guitare virtuelle
