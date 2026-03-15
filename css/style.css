@@ -797,6 +797,21 @@ div.statebar {
     border-radius: 0.3em;
     line-height: 1.3;
 }
+.catalog-legend {
+    margin-top: 0.6em;
+    padding: 0.5em 0.6em;
+    border-top: 1px solid #e5e5e5;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35em;
+}
+.catalog-legend-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    font-size: 0.72em;
+    color: #555;
+}
 .badge-ordered  { background: #ede9fe; color: #6d28d9; }
 .badge-nomute   { background: #d1fae5; color: #065f46; }
 .badge-triad    { background: #fee2e2; color: #991b1b; }

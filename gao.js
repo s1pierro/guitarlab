@@ -1102,6 +1102,22 @@ class ChordWizard {
         grid.classList.add('catalog-positions');
         domdest.appendChild(grid);
 
+        // ── légende des emblèmes ──
+        const legend = document.createElement('div');
+        legend.classList.add('catalog-legend');
+        BADGES.forEach(({ sym, title, cls }) => {
+            const row = document.createElement('div');
+            row.classList.add('catalog-legend-row');
+            const badge = document.createElement('span');
+            badge.classList.add('vc-badge', cls);
+            badge.textContent = sym;
+            const label = document.createElement('span');
+            label.textContent = title;
+            row.append(badge, label);
+            legend.appendChild(row);
+        });
+        domdest.appendChild(legend);
+
         render();
     }
 }
