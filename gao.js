@@ -883,8 +883,9 @@ class ChordWizard {
         const last  = v.frets.length - 1 - [...v.frets].reverse().findIndex(f => f !== 'x');
         const noMuteGap = first === -1 || !v.frets.slice(first, last + 1).some(f => f === 'x');
 
-        // 3. Triade (exactement 3 cordes)
-        const triad = playedCount === 3;
+        // 3. Triade stricte (3 cordes consécutives) ou simple (3 cordes avec discontinuité)
+        const strictTriad = playedCount === 3 && noMuteGap;
+        const triad       = playedCount === 3 && !noMuteGap;
 
         // 4. Tous les intervalles de l'accord présents
         const complete = chordIntervals.every(iv => playedIvs.includes(iv));
@@ -892,7 +893,7 @@ class ChordWizard {
         // 5. Aucune note répétée
         const unique = new Set(playedIvs).size === playedCount;
 
-        return { ordered, noMuteGap, triad, complete, unique };
+        return { ordered, noMuteGap, strictTriad, triad, complete, unique };
     }
 
     printCatalog (domdest, onApplyVoicing = () => {}, storage = null) {
@@ -915,11 +916,12 @@ class ChordWizard {
         const saveState = () => { if (storage) storage.set('catalog-filters', state); };
 
         const BADGES = [
-            { key: 'ordered',   sym: '↑', title: 'Intervalles en ordre croissant',  cls: 'badge-ordered'  },
-            { key: 'noMuteGap', sym: '▬', title: 'Pas de corde mutée intérieure',   cls: 'badge-nomute'   },
-            { key: 'triad',     sym: '△', title: 'Triade — 3 cordes jouées',        cls: 'badge-triad'    },
-            { key: 'complete',  sym: '★', title: 'Tous les intervalles présents',   cls: 'badge-complete' },
-            { key: 'unique',    sym: '◇', title: 'Aucune note répétée',             cls: 'badge-unique'   },
+            { key: 'ordered',    sym: '↑', title: 'Intervalles en ordre croissant',          cls: 'badge-ordered'  },
+            { key: 'noMuteGap',  sym: '▬', title: 'Pas de corde mutée intérieure',           cls: 'badge-nomute'   },
+            { key: 'strictTriad',sym: '▲', title: 'Triade stricte — 3 cordes consécutives',  cls: 'badge-triad'    },
+            { key: 'triad',      sym: '△', title: 'Triade — 3 cordes avec discontinuité',    cls: 'badge-triad'    },
+            { key: 'complete',   sym: '★', title: 'Tous les intervalles présents',           cls: 'badge-complete' },
+            { key: 'unique',     sym: '◇', title: 'Aucune note répétée',                     cls: 'badge-unique'   },
         ];
 
         const makeCard = (v, chordName) => {
