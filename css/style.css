@@ -866,18 +866,27 @@ div.statebar {
 .vc-del:active { color: #e44; }
 
 #catalog-details,
-#pinboard-details {
-    margin-top: 0.4em;
+#pinboard-details,
+#partitions-details {
     border-top: 1px solid #ddd;
 }
 #catalog-details summary,
-#pinboard-details summary {
+#pinboard-details summary,
+#partitions-details summary {
     cursor: pointer;
-    padding: 0.5em 0.5em;
+    padding: 0.5em 0.6em;
     font-size: 0.85em;
     font-weight: bold;
     list-style: none;
     user-select: none;
+    display: flex;
+    align-items: center;
+    gap: 0.4em;
+}
+#catalog-details summary:hover,
+#pinboard-details summary:hover,
+#partitions-details summary:hover {
+    background: #f0f0f0;
 }
 #catalog-details summary::-webkit-details-marker,
 #pinboard-details summary::-webkit-details-marker,
@@ -885,13 +894,15 @@ div.statebar {
 #catalog-details summary::before,
 #pinboard-details summary::before,
 #partitions-details summary::before {
-    content: '▸ ';
-    font-size: 0.75em;
+    content: '▸';
+    font-size: 0.7em;
+    opacity: 0.5;
+    flex-shrink: 0;
 }
 #catalog-details[open] summary::before,
 #pinboard-details[open] summary::before,
 #partitions-details[open] summary::before {
-    content: '▾ ';
+    content: '▾';
 }
 
 #onair-chord {
@@ -912,9 +923,6 @@ div.statebar {
 }
 
 /* ─── Partitions ──────────────────────────────────────────────────────────── */
-#partitions-details {
-    border-top: 1px solid #ddd;
-}
 #partitions-content {
     background: #f8f8f8;
 }
