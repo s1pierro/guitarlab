@@ -930,17 +930,6 @@ class ChordWizard {
                 grid.appendChild(row);
             });
 
-            // section accords ouverts (même tonique + type, contraintes verrouillées)
-            openGrid.innerHTML = '';
-            const openVoicings = this.buildVoicings(state.root, state.chordTypeIndex, {
-                requireOpen: true, maxFret: 4, maxSpan: 4, minNotes: 3,
-                allowInversion: false, noInteriorMutes: true
-            }).filter(v => {
-                const match = this._guessFromVoicing(v);
-                return match && match.root === state.root && match.chordtypeindex === state.chordTypeIndex;
-            });
-            openSection.style.display = openVoicings.length ? '' : 'none';
-            openVoicings.forEach(v => openGrid.appendChild(makeCard(v, chordName)));
         };
 
         // ── header ──
@@ -1053,16 +1042,6 @@ class ChordWizard {
         const grid = document.createElement('div');
         grid.classList.add('catalog-positions');
         domdest.appendChild(grid);
-
-        // ── section accords ouverts (même sélection, contraintes verrouillées) ──
-        const openSection = document.createElement('div');
-        const openTitle = document.createElement('div');
-        openTitle.classList.add('catalog-section-title');
-        openTitle.textContent = 'Accords ouverts';
-        const openGrid = document.createElement('div');
-        openGrid.classList.add('catalog-grid');
-        openSection.append(openTitle, openGrid);
-        domdest.appendChild(openSection);
 
         render();
     }
