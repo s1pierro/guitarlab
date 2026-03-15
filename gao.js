@@ -684,11 +684,14 @@ class PartitionManager {
         bpmInput.type = 'number'; bpmInput.min = 40; bpmInput.max = 240; bpmInput.step = 1;
         bpmInput.value = p.bpm;
         bpmInput.classList.add('partition-bpm-input');
-        bpmInput.addEventListener('change', () => {
-            p.bpm = Math.max(40, Math.min(240, parseInt(bpmInput.value) || 120));
-            if (this._playing) Tone.Transport.bpm.value = p.bpm;
+        const applyBpm = () => {
+            const v = Math.max(40, Math.min(240, parseInt(bpmInput.value) || 120));
+            p.bpm = v;
+            Tone.Transport.bpm.value = v;
             this.onStateChange();
-        });
+        };
+        bpmInput.addEventListener('input',  applyBpm);
+        bpmInput.addEventListener('change', applyBpm);
         bpmLabel.appendChild(bpmInput);
 
         this._playBtn = document.createElement('button');
