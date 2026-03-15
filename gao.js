@@ -574,11 +574,13 @@ class PartitionManager {
         this.stop();
         const p = this._active();
         if (!p) return;
-        Tone.Transport.bpm.value = p.bpm;
         const strings = this.getStrings();
         const totalUnits = p.slots.length * 16;
 
-        // Tone.Part : liste de [time, value] sans ambiguïté avec les sous-patterns
+        // Secondes par croche calculées directement depuis p.bpm
+        // → aucune dépendance envers le parseur Tone.Time ni Transport.bpm
+        const secPer16n = 60 / p.bpm / 4;
+
         const partEvents = [];
         for (let unit = 0; unit < totalUnits; unit++) {
             const slot = p.slots[Math.floor(unit / 16)];
@@ -591,7 +593,7 @@ class PartitionManager {
                 const openIdx = allnotes.indexOf(strings[s].name);
                 if (openIdx === -1) continue;
                 const note = allnotes[openIdx + parseInt(fret)];
-                if (note) partEvents.push([unit + '*16n', { note, synth: strings[s].synth }]);
+                if (note) partEvents.push([unit * secPer16n, { note, synth: strings[s].synth }]);
             }
         }
 
@@ -601,7 +603,7 @@ class PartitionManager {
             val.synth.triggerAttack(val.note, time);
         }, partEvents);
         this._seq.loop = this._looping;
-        this._seq.loopEnd = totalUnits + '*16n';
+        this._seq.loopEnd = totalUnits * secPer16n;
         this._seq.start(0);
         Tone.Transport.start();
         this._playing = true;
@@ -1673,7 +1675,7 @@ class GroundRender {
             if (percentComplete < 100) {
                 elem.textContent = Math.round(percentComplete) + ' %';
             } else {
-                elem.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.1.4</span>';
+                elem.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.2.0</span>';
             }
         }
     }
@@ -1843,7 +1845,7 @@ class Application {
         document.body.appendChild (this.appbody);
         this.appstamp = document.createElement('div');
         this.appstamp.id = 'app-stamp';
-        this.appstamp.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.1.4</span>';
+        this.appstamp.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.2.0</span>';
         this.appbody.appendChild (this.appstamp);
 
         this.touchlayer = document.createElement('div');
