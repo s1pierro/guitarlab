@@ -475,7 +475,11 @@ div.pinned-chord {
 }
 .pin-btn.blast{
     color: #000;
-
+}
+.chord-unknown {
+    font-style: italic;
+    opacity: 0.55;
+    font-size: 0.9em;
 }
 div.statebar {
     display: block;

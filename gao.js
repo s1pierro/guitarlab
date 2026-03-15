@@ -624,53 +624,55 @@ class ChordWizard {
 
     print (domdest) {
         domdest.innerHTML = '';
-        if (!this._result || this._result.founded.length === 0) return;
+        if (!this._result || this._result.notes.length === 0) return;
 
         const { founded, notes, frets } = this._result;
-        let someguessing = document.createElement('div');
+        const recognized = founded.length > 0;
 
-        for (let i = 0; i < founded.length; i++) {
-            if (i === 1) break;
+        const aguess = document.createElement('div');
+        aguess.classList.add('chord-guess');
 
-            let aguess = document.createElement('div');
-            aguess.classList.add('chord-guess');
+        // ── titre + bouton pin ──
+        const aguesstitle = document.createElement('div');
+        aguesstitle.classList.add('chord-guess-title');
 
-            let aguesstitle = document.createElement('div');
-            aguesstitle.classList.add('chord-guess-title');
-            aguesstitle.innerHTML = '<strong>' + founded[i].chordtype + ' </strong><span class="score">' + founded[i].score.toFixed(1) + '</span>';
+        const chord = recognized
+            ? founded[0].chord
+            : new Chord(frets, '?', '', '', '', '', notes.map(n => n.octavednote), []);
 
-            let aguessdesc = document.createElement('div');
-            aguessdesc.classList.add('chord-guess-desc');
+        const pinbtn = document.createElement('span');
+        pinbtn.classList.add('pin-btn');
+        pinbtn.innerHTML = '<i class="icon-attach-2"></i>';
+        if (this.chordpinboard.has(chord)) pinbtn.classList.add('blast');
+        pinbtn.addEventListener('click', () => {
+            this.chordpinboard.pinchord(chord);
+            this.print(domdest); // rafraîchit l'état du bouton
+        }, true);
 
-            let sheme = '';
-            for (let j = 0; j < notes.length; j++) {
-                if (notes[j].basenote !== undefined) {
-                    const itv = this.getinterval(founded[i].root, notes[j].basenote).replace('#', 'm');
-                    sheme += '<span class="itv itv-' + itv + '">' + notes[j].basenote + '</span>';
-                }
-            }
-
-            aguessdesc.innerHTML = frets.join(' ') + '<br>' + sheme;
-
-            if (i === 0) {
-                let pinbtn = document.createElement('span');
-                pinbtn.classList.add('pin-btn');
-                pinbtn.innerHTML = '<i class="icon-attach-2"></i>';
-                if (this.chordpinboard.has(founded[0].chord)) {
-                    pinbtn.classList.add('blast');
-                }
-                pinbtn.addEventListener('click', () => {
-                    this.chordpinboard.pinchord(founded[0].chord);
-                }, true);
-                aguesstitle.prepend(pinbtn);
-            }
-
-            aguess.appendChild(aguesstitle);
-            aguess.appendChild(aguessdesc);
-            someguessing.appendChild(aguess);
+        if (recognized) {
+            aguesstitle.innerHTML = '<strong>' + founded[0].chordtype + ' </strong><span class="score">' + founded[0].score.toFixed(1) + '</span>';
+        } else {
+            aguesstitle.innerHTML = '<span class="chord-unknown">?</span>';
         }
+        aguesstitle.prepend(pinbtn);
 
-        domdest.appendChild(someguessing);
+        // ── frettes + notes ──
+        const aguessdesc = document.createElement('div');
+        aguessdesc.classList.add('chord-guess-desc');
+
+        let sheme = '';
+        for (let j = 0; j < notes.length; j++) {
+            if (notes[j].basenote !== undefined) {
+                const itv = recognized
+                    ? this.getinterval(founded[0].root, notes[j].basenote).replace('#', 'm')
+                    : 'root';
+                sheme += '<span class="itv itv-' + itv + '">' + notes[j].basenote + '</span>';
+            }
+        }
+        aguessdesc.innerHTML = frets.join(' ') + '<br>' + sheme;
+
+        aguess.append(aguesstitle, aguessdesc);
+        domdest.appendChild(aguess);
     }
 
     mountPinBoard (domdest) {
