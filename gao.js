@@ -460,38 +460,57 @@ class ChordPinBoard {
 class PluckPad {
     constructor (strings, domdest) {
         this.domctnr = document.createElement('div');
-        this.domctnr.id ='PluckPad';
-        this.domctnr.innerHTML = '';
+        this.domctnr.id = 'PluckPad';
         domdest.appendChild(this.domctnr);
-        this.pads = [];
         this.strings = strings;
-        //-console.log (this);
-        //-console.log (strings);
-        // Log events flag
-        this.logEvents = false;
 
-        // Touch Point cache
-        this.tpCache = [];
+        // ── interactions tactiles ──
+        let activeEl = null;
+
+        const padAt = (x, y) => {
+            const el = document.elementFromPoint(x, y);
+            return el?.closest('.p-pad') ?? null;
+        };
+        const pluckEl = (el) => {
+            const idx = parseInt(el.dataset.stringIndex);
+            if (!isNaN(idx)) this.pluck(this.strings[idx]);
+        };
+
+        this.domctnr.addEventListener('touchstart', (ev) => {
+            ev.preventDefault();
+            activeEl = padAt(ev.touches[0].clientX, ev.touches[0].clientY);
+        }, { passive: false });
+
+        this.domctnr.addEventListener('touchmove', (ev) => {
+            ev.preventDefault();
+            const t = ev.touches[0];
+            const under = padAt(t.clientX, t.clientY);
+            if (under && under !== activeEl) {
+                if (activeEl) pluckEl(activeEl);
+                activeEl = under;
+            }
+        }, { passive: false });
+
+        this.domctnr.addEventListener('touchend', () => {
+            if (activeEl) pluckEl(activeEl);
+            activeEl = null;
+        });
+
         this.update();
     }
+
     pluck (string) {
-
-         let timing = Tone.now();
-         string.synth.triggerAttack(string.getstate().octavednote, timing);
-           //     this.strings[i].synth.triggerAttack(this.strings[i].getstate().octavednote, timing);
+        const state = string.getstate();
+        if (state.octavednote === 'x') return;
+        string.synth.triggerAttack(state.octavednote, Tone.now());
     }
-    update() {
-      this.domctnr.innerHTML = '';
-      for (let i = 0; i < this.strings.length; i++) {
 
-            let ctnr = document.createElement('div');
+    update () {
+        this.domctnr.innerHTML = '';
+        for (let i = 0; i < this.strings.length; i++) {
+            const ctnr = document.createElement('div');
             ctnr.classList.add('p-pad');
-
-            ctnr.addEventListener('touchstart', (ev) => {
-                ev.preventDefault();
-                this.pluck(this.strings[i]);
-            });
-            ctnr.addEventListener('touchmove', (ev) => { ev.preventDefault(); }, { passive: false });
+            ctnr.dataset.stringIndex = i;
 
             const state = this.strings[i].getstate();
             if (state.octavednote !== 'x') {
@@ -501,14 +520,7 @@ class PluckPad {
                 ctnr.appendChild(noteEl);
             }
 
-            let apad = {
-                string: this.strings[i],
-                ctnr : ctnr
-
-            }
-            this.pads.push(apad);
             this.domctnr.appendChild(ctnr);
-
         }
     }
 }
