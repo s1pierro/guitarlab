@@ -532,7 +532,7 @@ function _partNewSlot () {
     return { chord: null, pattern: Array(6).fill(null).map(() => Array(16).fill(false)) };
 }
 function _partNewItem () {
-    return { id: 'p' + Date.now().toString(36), name: 'Partition 1', bpm: 80, slots: [_partNewSlot()] };
+    return { id: 'p' + Date.now().toString(36), name: 'Partition 1', bpm: 240, slots: [_partNewSlot()] };
 }
 function _partReviveChord (c) {
     return c instanceof Chord
@@ -1673,7 +1673,7 @@ class GroundRender {
             if (percentComplete < 100) {
                 elem.textContent = Math.round(percentComplete) + ' %';
             } else {
-                elem.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.1.1</span>';
+                elem.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.1.2</span>';
             }
         }
     }
@@ -1843,7 +1843,7 @@ class Application {
         document.body.appendChild (this.appbody);
         this.appstamp = document.createElement('div');
         this.appstamp.id = 'app-stamp';
-        this.appstamp.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.1.1</span>';
+        this.appstamp.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.1.2</span>';
         this.appbody.appendChild (this.appstamp);
 
         this.touchlayer = document.createElement('div');
