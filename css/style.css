@@ -887,7 +887,8 @@ div.statebar {
     padding: 0.5em 0.6em;
     cursor: pointer;
     font-size: 0.9em;
-    color: #555;
+    font-weight: 600;
+    color: #1a1a1a;
     user-select: none;
 }
 .ux-panel-header:hover { color: #222; }
