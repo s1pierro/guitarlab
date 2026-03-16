@@ -515,7 +515,15 @@ class PluckPad {
             ctnr.classList.add('p-pad');
             ctnr.dataset.stringIndex = i;
 
-            const state = this.strings[i].getstate();
+            const state    = this.strings[i].getstate();
+            const interval = this.strings[i].interval;
+
+            if (interval) {
+                const iv = document.createElement('i');
+                iv.className = 'p-pad-iv icon-nit-' + interval;
+                ctnr.appendChild(iv);
+            }
+
             if (state.octavednote !== 'x') {
                 const noteEl = document.createElement('span');
                 noteEl.classList.add('p-pad-note');
