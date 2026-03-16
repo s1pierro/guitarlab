@@ -1454,39 +1454,39 @@ class ChordWizard {
 }
 // ── Cadrages prédéfinis ───────────────────────────────────────────────────────
 // pos/target : coordonnées 3D de la caméra / du point visé
-// zone : position horizontale (0..1) du centre de la guitare sur l'écran
-//        0.5 = centré (par défaut), < 0.5 = vers la gauche
-//        À calibrer une fois les positions 3D validées.
+// screen     : position cible (cx, cy) normalisée 0..1 où doit atterrir `target`
+//              sur l'écran après l'animation (auto-alignement par pan).
+//              cx=0.5 cy=0.5 = centré. cx<0.5 = décalé vers la gauche.
 const CAMERA_FRAMES = [
     {
         id: 'full',  label: '1–18',
         pos:    { x: 0.13, y: -0.06, z: 1.55 },
         target: { x: 0.13, y:  0.06, z: -0.02 },
-        zone: 0.5,
+        screen: { cx: 0.5, cy: 0.5 },
     },
     {
         id: 'open',  label: 'I',
         pos:    { x: 0.13, y:  0.12, z: 0.88 },
         target: { x: 0.13, y:  0.24, z: -0.02 },
-        zone: 0.5,
+        screen: { cx: 0.5, cy: 0.5 },
     },
     {
         id: 'pos5',  label: 'V',
         pos:    { x: 0.13, y: -0.01, z: 0.88 },
         target: { x: 0.13, y:  0.11, z: -0.02 },
-        zone: 0.5,
+        screen: { cx: 0.5, cy: 0.5 },
     },
     {
         id: 'pos9',  label: 'IX',
         pos:    { x: 0.13, y: -0.07, z: 0.88 },
         target: { x: 0.13, y:  0.05, z: -0.02 },
-        zone: 0.5,
+        screen: { cx: 0.5, cy: 0.5 },
     },
     {
         id: 'pos12', label: 'XII',
         pos:    { x: 0.13, y: -0.15, z: 0.88 },
         target: { x: 0.13, y: -0.03, z: -0.02 },
-        zone: 0.5,
+        screen: { cx: 0.5, cy: 0.5 },
     },
 ];
 
@@ -1545,7 +1545,6 @@ class Cameraman {
     }
     flyTo (frame, durationMs = 550) {
         if (this._flyRaf) { cancelAnimationFrame(this._flyRaf); this._flyRaf = null; }
-        this.applyZone(frame.zone);
         const p0 = this.camera.position.clone();
         const t0 = this.controls.target.clone();
         const p1 = new THREE.Vector3(frame.pos.x,    frame.pos.y,    frame.pos.z);
@@ -1558,22 +1557,53 @@ class Cameraman {
             this.controls.target.lerpVectors(t0, t1, ease);
             this.controls.update();
             this.onNeedRender();
-            if (raw < 1) this._flyRaf = requestAnimationFrame(tick);
-            else this._flyRaf = null;
+            if (raw < 1) {
+                this._flyRaf = requestAnimationFrame(tick);
+            } else {
+                this._flyRaf = null;
+                this._autoAlign(frame);
+            }
         };
         this._flyRaf = requestAnimationFrame(tick);
     }
 
-    applyZone (cx = 0.5) {
-        const W = window.innerWidth, H = window.innerHeight;
-        if (Math.abs(cx - 0.5) < 0.01) {
-            this.camera.clearViewOffset();
-        } else {
-            // cx = position horizontale cible (0..1) du centre scène sur l'écran
-            // setViewOffset décale la projection : offset = (0.5 - cx) * W
-            this.camera.setViewOffset(W, H, Math.round((0.5 - cx) * W), 0, W, H);
+    // Corrige le pan caméra pour que frame.target atterrisse à frame.screen (cx,cy).
+    // Projection 3D→NDC, mesure de l'erreur, pan dans l'espace monde, itération.
+    // tolerance en NDC (0..2), maxIter évite toute boucle infinie.
+    _autoAlign (frame, tolerance = 0.02, maxIter = 8) {
+        if (!frame.screen) return;
+        const { cx = 0.5, cy = 0.5 } = frame.screen;
+        // cible en NDC : cx/cy sont normalisés 0..1, NDC x/y sont dans [-1,+1], Y inversé
+        const tNdcX = cx * 2 - 1;
+        const tNdcY = -(cy * 2 - 1);
+        // point 3D ancre = target du cadrage (fixe dans l'espace monde)
+        const anchor = new THREE.Vector3(frame.target.x, frame.target.y, frame.target.z);
+        const dir   = new THREE.Vector3();
+        const right = new THREE.Vector3();
+
+        for (let i = 0; i < maxIter; i++) {
+            const ndc  = anchor.clone().project(this.camera);
+            const errX = ndc.x - tNdcX;
+            const errY = ndc.y - tNdcY;
+            if (Math.abs(errX) < tolerance && Math.abs(errY) < tolerance) break;
+
+            // Convertit l'erreur NDC en déplacement monde (pan)
+            const dist  = this.camera.position.distanceTo(this.controls.target);
+            const halfH = Math.tan(this.camera.fov * Math.PI / 360) * dist;
+            const halfW = halfH * this.camera.aspect;
+
+            this.camera.getWorldDirection(dir);
+            right.crossVectors(dir, this.camera.up).normalize();
+
+            // errX > 0 → ancre trop à droite → pan vers la droite pour la ramener
+            const pan = right.clone().multiplyScalar(errX * halfW)
+                .addScaledVector(this.camera.up, errY * halfH);
+
+            this.camera.position.add(pan);
+            this.controls.target.add(pan);
+            this.controls.update();
         }
-        this.camera.updateProjectionMatrix();
+        this.onNeedRender();
     }
 
     onViewChange (cb) {
@@ -1922,7 +1952,7 @@ class GroundRender {
     setView (v)           { this.cameraman.setView(v); }
     onViewChange (cb)     { this.cameraman.onViewChange(cb); }
     flyTo (frame, ms)     { this.cameraman.flyTo(frame, ms); }
-    applyZone (cx)        { this.cameraman.applyZone(cx); }
+    clearZone ()          { this.cameraman.camera.clearViewOffset(); this.cameraman.camera.updateProjectionMatrix(); }
     stuffat (mouse) {
         let stuff = { c: null,  object: null };
         const raycaster = new THREE.Raycaster();
@@ -2823,7 +2853,7 @@ class Application {
         freeBtn.textContent = '↺';
         freeBtn.title = 'Vue libre';
         freeBtn.addEventListener('click', () => {
-            this.groundrender.applyZone(0.5);
+            this.groundrender.clearZone();
             const v = this.storage.get('camera-views', {})[this._orientKey()];
             if (v) { this.groundrender.setView(v); this.groundrender.render(); }
             strip.querySelectorAll('.cam-frame-btn').forEach(b => b.classList.remove('cam-frame-btn--active'));
