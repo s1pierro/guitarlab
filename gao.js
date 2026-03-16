@@ -1608,7 +1608,10 @@ class GroundRender {
         window.addEventListener( 'resize', this.onWindowResize.bind(this), false );
     }
     _makeSpruceTexture () {
-        const tex = new THREE.TextureLoader().load('assets/wood-42.png');
+        const tex = new THREE.TextureLoader().load('assets/wood-42.png', () => {
+            tex.needsUpdate = true;
+            this.render();
+        });
         tex.wrapS = THREE.RepeatWrapping;
         tex.wrapT = THREE.RepeatWrapping;
         tex.repeat.set(1, 2);
