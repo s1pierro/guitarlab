@@ -10,7 +10,7 @@
     color: #333;
     display: block;
     flex-direction: row;
-    height: 100vh;
+    height: 100dvh;
     z-index: 0;
 }
 #render-layer {
@@ -18,7 +18,7 @@
     right: 0vw;
     top: 0vh;
     width: 100vw;
-    height: 100vh;
+    height: 100dvh;
     display: inline-block;
     overflow: hidden;
     z-index: 2;
@@ -28,7 +28,7 @@
     right: 0vw;
     top: 0vh;
     width: 100vw;
-    height: 100vh;
+    height: 100dvh;
     display: inline-block;
     overflow: hidden;
     z-index: 3;
@@ -49,7 +49,7 @@
     top: 0;
     right: 0;
     width: 66vw;
-    height: 100vh;
+    height: 100dvh;
     display: flex;
     flex-direction: column;
     overflow: hidden;
