@@ -1555,10 +1555,15 @@ class Cameraman {
     flyTo (frame, durationMs = 550, strings = null) {
         if (this._flyRaf) { cancelAnimationFrame(this._flyRaf); this._flyRaf = null; }
         this._debugSpheres(frame, strings);
+
+        // Précalcule le pan d'alignement depuis la position finale frame.pos/target,
+        // puis l'intègre dans la destination du lerp — pas de saut en fin d'animation.
+        const alignPan = this._computeAlignPan(frame, strings);
+
         const p0 = this.camera.position.clone();
         const t0 = this.controls.target.clone();
-        const p1 = new THREE.Vector3(frame.pos.x,    frame.pos.y,    frame.pos.z);
-        const t1 = new THREE.Vector3(frame.target.x, frame.target.y, frame.target.z);
+        const p1 = new THREE.Vector3(frame.pos.x,    frame.pos.y,    frame.pos.z).add(alignPan);
+        const t1 = new THREE.Vector3(frame.target.x, frame.target.y, frame.target.z).add(alignPan);
         const t_start = performance.now();
         const tick = (now) => {
             const raw  = Math.min((now - t_start) / durationMs, 1);
@@ -1571,67 +1576,77 @@ class Cameraman {
                 this._flyRaf = requestAnimationFrame(tick);
             } else {
                 this._flyRaf = null;
-                this._autoAlign(frame, strings);
+                this._logAlign(frame, strings);  // vérification log + overlay, sans bouger
             }
         };
         this._flyRaf = requestAnimationFrame(tick);
     }
 
-    // Décale la caméra (pan pur) pour que frame.target atterrisse à frame.screen (cx,cy).
-    // Après flyTo, frame.target est exactement au centre de la vue (NDC 0,0) — on calcule
-    // le pan analytiquement en une seule passe, sans itération ni re-projection.
-    _autoAlign (frame, strings = null) {
-        if (!frame.screen) return;
+    // Calcule le vecteur de pan nécessaire pour centrer l'ancre sur frame.screen,
+    // en simulant la caméra à frame.pos/target sans la déplacer réellement.
+    _computeAlignPan (frame, strings = null) {
+        if (!frame.screen) return new THREE.Vector3();
         const { cx = 0.5, cy = 0.5 } = frame.screen;
-        // Cible en NDC (Y écran inversé vs NDC)
         const tNdcX = cx * 2 - 1;
         const tNdcY = -(cy * 2 - 1);
 
-        // Ancre = centre du range de frettes si disponible, sinon frame.target
+        // Ancre = milieu des coins de frettes ou frame.target
         let anchor;
         if (strings && frame.frets) {
             const f  = frame.frets;
             const p1 = strings[f.strMin].fingerprints[f.fretIdx1];
             const p2 = strings[f.strMax].fingerprints[f.fretIdx2];
             anchor = new THREE.Vector3(
-                (p1.x + p2.x) / 2,
-                (p1.y + p2.y) / 2,
-                (p1.z + p2.z) / 2,
+                (p1.x + p2.x) / 2, (p1.y + p2.y) / 2, (p1.z + p2.z) / 2,
             );
         } else {
             anchor = new THREE.Vector3(frame.target.x, frame.target.y, frame.target.z);
         }
 
-        // Projection réelle de l'ancre (elle n'est pas forcément à NDC 0,0)
-        this.camera.updateMatrixWorld();
-        const ndc  = anchor.clone().project(this.camera);
-        const errX = ndc.x - tNdcX;
-        const errY = ndc.y - tNdcY;
+        // Simule la vue depuis frame.pos regardant frame.target
+        const camPos  = new THREE.Vector3(frame.pos.x,    frame.pos.y,    frame.pos.z);
+        const viewDir = new THREE.Vector3(frame.target.x, frame.target.y, frame.target.z)
+            .sub(camPos).normalize();
+        const right   = new THREE.Vector3().crossVectors(viewDir, this.camera.up).normalize();
 
-        const viewDir = new THREE.Vector3();
-        this.camera.getWorldDirection(viewDir);
-        const depth = anchor.clone().sub(this.camera.position).dot(viewDir);
-        const halfH = Math.tan(this.camera.fov * Math.PI / 360) * Math.max(depth, 0.01);
-        const halfW = halfH * this.camera.aspect;
+        // Projection manuelle de l'ancre depuis cette position simulée
+        const toAnchor = anchor.clone().sub(camPos);
+        const depth    = toAnchor.dot(viewDir);
+        const halfH    = Math.tan(this.camera.fov * Math.PI / 360) * Math.max(depth, 0.01);
+        const halfW    = halfH * this.camera.aspect;
+        const ndcX     = toAnchor.dot(right) / halfW;
+        const ndcY     = toAnchor.dot(this.camera.up) / halfH;
 
-        const right = new THREE.Vector3().crossVectors(viewDir, this.camera.up).normalize();
-
-        // Pan unique : errX > 0 → ancre trop à droite → caméra à droite → ancre va à gauche
-        const pan = right.clone().multiplyScalar(errX * halfW)
+        const errX = ndcX - tNdcX;
+        const errY = ndcY - tNdcY;
+        return right.clone().multiplyScalar(errX * halfW)
             .addScaledVector(this.camera.up, errY * halfH);
+    }
 
-        this.camera.position.add(pan);
-        this.controls.target.add(pan);
-        this.controls.update();
+    // Log + overlay post-animation (vérification uniquement, sans mouvement caméra).
+    _logAlign (frame, strings = null) {
+        if (!frame.screen) return;
+        const { cx = 0.5, cy = 0.5 } = frame.screen;
+        const tNdcX = cx * 2 - 1;
+        const tNdcY = -(cy * 2 - 1);
 
-        // Vérification post-alignement
+        let anchor;
+        if (strings && frame.frets) {
+            const f  = frame.frets;
+            const p1 = strings[f.strMin].fingerprints[f.fretIdx1];
+            const p2 = strings[f.strMax].fingerprints[f.fretIdx2];
+            anchor = new THREE.Vector3(
+                (p1.x + p2.x) / 2, (p1.y + p2.y) / 2, (p1.z + p2.z) / 2,
+            );
+        } else {
+            anchor = new THREE.Vector3(frame.target.x, frame.target.y, frame.target.z);
+        }
+
         this.camera.updateMatrixWorld();
-        const ndcPost  = anchor.clone().project(this.camera);
-        const reached  = { cx: (ndcPost.x + 1) / 2, cy: (1 - ndcPost.y) / 2 };
+        const ndc     = anchor.clone().project(this.camera);
+        const reached = { cx: (ndc.x + 1) / 2, cy: (1 - ndc.y) / 2 };
         console.log(`[Cameraman] ${frame.id} — cible: cx=${cx.toFixed(3)} cy=${cy.toFixed(3)} | atteint: cx=${reached.cx.toFixed(3)} cy=${reached.cy.toFixed(3)}`);
         this._debugOverlay(frame.id, cx, cy, reached.cx, reached.cy);
-
-        this.onNeedRender();
     }
 
     // Sphères debug 3D : coin 1 (bleu) + coin 2 (orange) de la boîte de frettes.
