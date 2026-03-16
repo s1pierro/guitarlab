@@ -1573,29 +1573,31 @@ class Cameraman {
     _autoAlign (frame, tolerance = 0.02, maxIter = 8) {
         if (!frame.screen) return;
         const { cx = 0.5, cy = 0.5 } = frame.screen;
-        // cible en NDC : cx/cy sont normalisés 0..1, NDC x/y sont dans [-1,+1], Y inversé
+        // cible en NDC : cx/cy normalisés 0..1 → NDC x/y dans [-1,+1], Y écran inversé vs NDC
         const tNdcX = cx * 2 - 1;
         const tNdcY = -(cy * 2 - 1);
         // point 3D ancre = target du cadrage (fixe dans l'espace monde)
-        const anchor = new THREE.Vector3(frame.target.x, frame.target.y, frame.target.z);
-        const dir   = new THREE.Vector3();
-        const right = new THREE.Vector3();
+        const anchor  = new THREE.Vector3(frame.target.x, frame.target.y, frame.target.z);
+        const viewDir = new THREE.Vector3();
+        const right   = new THREE.Vector3();
 
         for (let i = 0; i < maxIter; i++) {
+            // Forcer la mise à jour des matrices avant la projection
+            this.camera.updateMatrixWorld();
             const ndc  = anchor.clone().project(this.camera);
             const errX = ndc.x - tNdcX;
             const errY = ndc.y - tNdcY;
             if (Math.abs(errX) < tolerance && Math.abs(errY) < tolerance) break;
 
-            // Convertit l'erreur NDC en déplacement monde (pan)
-            const dist  = this.camera.position.distanceTo(this.controls.target);
-            const halfH = Math.tan(this.camera.fov * Math.PI / 360) * dist;
+            // Profondeur de l'ancre sur l'axe de vue (plus précis que dist au target)
+            this.camera.getWorldDirection(viewDir);
+            const depth = anchor.clone().sub(this.camera.position).dot(viewDir);
+            const halfH = Math.tan(this.camera.fov * Math.PI / 360) * Math.max(depth, 0.01);
             const halfW = halfH * this.camera.aspect;
 
-            this.camera.getWorldDirection(dir);
-            right.crossVectors(dir, this.camera.up).normalize();
+            right.crossVectors(viewDir, this.camera.up).normalize();
 
-            // errX > 0 → ancre trop à droite → pan vers la droite pour la ramener
+            // errX > 0 → ancre trop à droite → pan droite → ancre se déplace à gauche
             const pan = right.clone().multiplyScalar(errX * halfW)
                 .addScaledVector(this.camera.up, errY * halfH);
 
