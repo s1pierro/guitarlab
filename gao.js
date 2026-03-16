@@ -1497,6 +1497,8 @@ class Cameraman {
         this.viewRatio = 1.0;
         this.normalisedmouse = {x: 0, y: 0};
         this._flyRaf = null;
+        this.scene = null;          // injecté depuis GroundRender après init
+        this._debugMeshes = [];
 
         this.camera = new THREE.PerspectiveCamera( 25, window.innerWidth / window.innerHeight, 0.1, 15 );
         this.camera.position.set( 0.13203648995258088, -0.05773723849390569, 1.104895121140156 );
@@ -1545,6 +1547,7 @@ class Cameraman {
     }
     flyTo (frame, durationMs = 550) {
         if (this._flyRaf) { cancelAnimationFrame(this._flyRaf); this._flyRaf = null; }
+        this._debugSpheres(frame);
         const p0 = this.camera.position.clone();
         const t0 = this.controls.target.clone();
         const p1 = new THREE.Vector3(frame.pos.x,    frame.pos.y,    frame.pos.z);
@@ -1611,6 +1614,32 @@ class Cameraman {
         this._debugOverlay(frame.id, cx, cy, reached.cx, reached.cy);
 
         this.onNeedRender();
+    }
+
+    // Sphères debug 3D : pos caméra (bleu) + target/ancre (orange). Remplacées à chaque flyTo.
+    _debugSpheres (frame) {
+        if (!this.scene) return;
+        // Supprimer les anciennes
+        this._debugMeshes.forEach(m => {
+            this.scene.remove(m);
+            m.geometry.dispose();
+            m.material.dispose();
+        });
+        this._debugMeshes = [];
+
+        const mkSphere = (pos, color) => {
+            const mesh = new THREE.Mesh(
+                new THREE.SphereGeometry(0.008, 10, 8),
+                new THREE.MeshBasicMaterial({ color, depthTest: false })
+            );
+            mesh.position.set(pos.x, pos.y, pos.z);
+            mesh.renderOrder = 999;
+            this.scene.add(mesh);
+            this._debugMeshes.push(mesh);
+        };
+
+        mkSphere(frame.pos,    0x4488ff);  // bleu   — position caméra
+        mkSphere(frame.target, 0xff8800);  // orange — ancre / point visé
     }
 
     // Overlay debug : rectangle englobant le point cible (vert) et le point atteint (rouge)
@@ -1758,6 +1787,7 @@ class GroundRender {
         this.scene = new THREE.Scene();              //#fffdf0
         this.scene.background = new THREE.Color( 0xeeeeee );
         this.scene.fog = new THREE.Fog( 0xeeeeee, 2, 35 );
+        this.cameraman.scene = this.scene;
 
 
                   let plane = new THREE.Mesh(
