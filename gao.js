@@ -1608,7 +1608,70 @@ class GroundRender {
         window.addEventListener( 'resize', this.onWindowResize.bind(this), false );
     }
     _makeSpruceTexture () {
-        const tex = new THREE.TextureLoader().load('assets/spruce-texture-debug.png');
+        const W = 512, H = 1024;
+        const canvas = document.createElement('canvas');
+        canvas.width  = W;
+        canvas.height = H;
+        const ctx = canvas.getContext('2d');
+
+        // base — épicéa blond crème
+        ctx.fillStyle = '#e8ddc8';
+        ctx.fillRect(0, 0, W, H);
+
+        const rng = (seed => () => { seed = (seed * 1664525 + 1013904223) & 0xffffffff; return (seed >>> 0) / 0xffffffff; })(42);
+
+        // veines sombres (bois d'été) — fort contraste
+        const darkCount = 60;
+        for (let i = 0; i < darkCount; i++) {
+            const x     = rng() * W;
+            const width = 0.6 + rng() * 2.2;
+            const lum   = Math.floor(70 + rng() * 50);   // 70–120 : brun foncé
+            const alpha = 0.45 + rng() * 0.40;           // 0.45–0.85
+            ctx.strokeStyle = `rgba(${lum}, ${Math.floor(lum * 0.72)}, ${Math.floor(lum * 0.48)}, ${alpha})`;
+            ctx.lineWidth   = width;
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            const wave = (rng() - 0.5) * 8;
+            ctx.bezierCurveTo(x + wave, H * 0.33, x - wave, H * 0.66, x + (rng() - 0.5) * 6, H);
+            ctx.stroke();
+        }
+
+        // veines claires (bois de printemps) — intercalées
+        const lightCount = 50;
+        for (let i = 0; i < lightCount; i++) {
+            const x     = rng() * W;
+            const width = 0.4 + rng() * 1.2;
+            const lum   = Math.floor(220 + rng() * 30);  // 220–250 : crème clair
+            const alpha = 0.30 + rng() * 0.35;
+            ctx.strokeStyle = `rgba(${lum}, ${Math.floor(lum * 0.90)}, ${Math.floor(lum * 0.75)}, ${alpha})`;
+            ctx.lineWidth   = width;
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            const wave = (rng() - 0.5) * 6;
+            ctx.bezierCurveTo(x + wave, H * 0.33, x - wave, H * 0.66, x + (rng() - 0.5) * 4, H);
+            ctx.stroke();
+        }
+
+        // micro-pores
+        for (let i = 0; i < 600; i++) {
+            const px = rng() * W;
+            const py = rng() * H;
+            const r  = 0.4 + rng() * 0.9;
+            ctx.fillStyle = `rgba(80, 50, 20, ${0.08 + rng() * 0.14})`;
+            ctx.beginPath();
+            ctx.arc(px, py, r, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // reflet verni satiné
+        const grad = ctx.createLinearGradient(0, 0, W, H);
+        grad.addColorStop(0,    'rgba(255,255,240, 0.10)');
+        grad.addColorStop(0.45, 'rgba(255,255,240, 0.22)');
+        grad.addColorStop(1,    'rgba(255,255,240, 0.04)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, W, H);
+
+        const tex = new THREE.CanvasTexture(canvas);
         tex.wrapS = THREE.RepeatWrapping;
         tex.wrapT = THREE.RepeatWrapping;
         tex.repeat.set(1, 2);
