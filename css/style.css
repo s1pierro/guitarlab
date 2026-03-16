@@ -1118,7 +1118,7 @@ div.statebar {
 /* rangée 1 — accords */
 .part-ctrack-chord-row { min-height: 5.5em; }
 .part-ctrack-cell {
-    flex: 0 0 1.4em;
+    flex: 0 0 1.4rem;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -1167,7 +1167,7 @@ div.statebar {
 /* rangée 2 — délimiteurs de fin */
 .part-ctrack-delim-row { min-height: 1.4em; }
 .part-ctrack-delim-cell {
-    flex: 0 0 1.4em;
+    flex: 0 0 1.4rem;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1188,7 +1188,7 @@ div.statebar {
     flex-direction: row;
 }
 .part-col {
-    flex: 0 0 1.4em;
+    flex: 0 0 1.4rem;
     display: flex;
     flex-direction: column;
     border-right: 1px solid #ececec;
@@ -1222,7 +1222,7 @@ div.statebar {
     border-top: 1px solid #e8e8e8;
 }
 .part-ruler-cell {
-    flex: 0 0 1.4em;
+    flex: 0 0 1.4rem;
     height: 1.4em;
     display: flex;
     align-items: center;
