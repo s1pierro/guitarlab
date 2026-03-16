@@ -2133,7 +2133,7 @@ class PanelReperes extends UXPanel {
 // ── PanelEcoute : visualiseur micro + détection de note ──────────────────────
 class PanelEcoute extends UXPanel {
     constructor () {
-        super('ecoute', 'Écoute', 'icon-mic');
+        super('ecoute', 'Accordeur', 'icon-mic');
         this._stream     = null;
         this._audioCtx   = null;
         this._analyser   = null;
@@ -2259,8 +2259,8 @@ class PanelEcoute extends UXPanel {
         for (let i = 0; i < bins; i++) {
             const v = this._freqBuf[i] / 255;
             const h = v * H;
-            ctx.fillStyle = `hsla(${200 + v * 40}, 70%, ${30 + v * 35}%, 0.85)`;
-            ctx.fillRect(i * barW, H - h, Math.max(barW - 1, 1), h);
+            ctx.fillStyle = 'rgba(0,0,0,0.75)';
+            ctx.fillRect(i * barW, 0, Math.max(barW - 1, 1), h);
         }
 
         // ── Pitch ────────────────────────────────────────────────────────────

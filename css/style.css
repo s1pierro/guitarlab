@@ -1189,7 +1189,7 @@ div.statebar {
     height: 56px;
     margin-top: 0.2em;
     border-radius: 0.4em;
-    background: #00000010;
+    background: none;
     display: block;
 }
 
