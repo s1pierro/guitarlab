@@ -1462,31 +1462,31 @@ const CAMERA_FRAMES = [
         id: 'full',  label: '1–18',
         pos:    { x: 0.13, y: -0.06, z: 1.55 },
         target: { x: 0.13, y:  0.06, z: -0.02 },
-        screen: { cx: 0.5, cy: 0.5 },
+        screen: { cx: 0.165, cy: 0.5 },
     },
     {
         id: 'open',  label: 'I',
         pos:    { x: 0.13, y:  0.12, z: 0.88 },
         target: { x: 0.13, y:  0.24, z: -0.02 },
-        screen: { cx: 0.5, cy: 0.5 },
+        screen: { cx: 0.165, cy: 0.5 },
     },
     {
         id: 'pos5',  label: 'V',
         pos:    { x: 0.13, y: -0.01, z: 0.88 },
         target: { x: 0.13, y:  0.11, z: -0.02 },
-        screen: { cx: 0.5, cy: 0.5 },
+        screen: { cx: 0.165, cy: 0.5 },
     },
     {
         id: 'pos9',  label: 'IX',
         pos:    { x: 0.13, y: -0.07, z: 0.88 },
         target: { x: 0.13, y:  0.05, z: -0.02 },
-        screen: { cx: 0.5, cy: 0.5 },
+        screen: { cx: 0.165, cy: 0.5 },
     },
     {
         id: 'pos12', label: 'XII',
         pos:    { x: 0.13, y: -0.15, z: 0.88 },
         target: { x: 0.13, y: -0.03, z: -0.02 },
-        screen: { cx: 0.5, cy: 0.5 },
+        screen: { cx: 0.165, cy: 0.5 },
     },
 ];
 
