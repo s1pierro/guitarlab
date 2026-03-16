@@ -1337,26 +1337,40 @@ class ChordWizard {
         const filters = document.createElement('div');
         filters.classList.add('catalog-filters');
 
-        // sélecteur tonique
-        const rootSel = document.createElement('select');
+        // ── ligne tonique (pills) ──
+        const rootRow = document.createElement('div');
+        rootRow.className = 'catalog-pill-row';
         notes.forEach(n => {
-            const o = document.createElement('option');
-            o.value = n; o.textContent = n;
-            if (n === state.root) o.selected = true;
-            rootSel.appendChild(o);
+            const pill = document.createElement('span');
+            pill.className = 'catalog-pill' + (n === state.root ? ' catalog-pill--active' : '');
+            pill.textContent = n;
+            pill.addEventListener('click', () => {
+                if (n === state.root) return;
+                state.root = n;
+                rootRow.querySelectorAll('.catalog-pill').forEach(p => p.classList.remove('catalog-pill--active'));
+                pill.classList.add('catalog-pill--active');
+                saveState(); render();
+            });
+            rootRow.appendChild(pill);
         });
-        rootSel.addEventListener('change', () => { state.root = rootSel.value; saveState(); render(); });
 
-        // sélecteur type d'accord
-        const typeSel = document.createElement('select');
+        // ── ligne qualité (pills) ──
+        const typeRow = document.createElement('div');
+        typeRow.className = 'catalog-pill-row';
         chordtypes.forEach((ct, idx) => {
-            const o = document.createElement('option');
-            o.value = idx;
-            o.textContent = ct.sym || ct.intervals.join(' ');
-            if (idx === state.chordTypeIndex) o.selected = true;
-            typeSel.appendChild(o);
+            const label = ct.sym !== '' ? ct.sym : ct.intervals.length === 1 ? 'R' : 'Maj';
+            const pill = document.createElement('span');
+            pill.className = 'catalog-pill' + (idx === state.chordTypeIndex ? ' catalog-pill--active' : '');
+            pill.textContent = label;
+            pill.addEventListener('click', () => {
+                if (idx === state.chordTypeIndex) return;
+                state.chordTypeIndex = idx;
+                typeRow.querySelectorAll('.catalog-pill').forEach(p => p.classList.remove('catalog-pill--active'));
+                pill.classList.add('catalog-pill--active');
+                saveState(); render();
+            });
+            typeRow.appendChild(pill);
         });
-        typeSel.addEventListener('change', () => { state.chordTypeIndex = parseInt(typeSel.value); saveState(); render(); });
 
         // span max
         const spanLabel = document.createElement('label');
@@ -1431,7 +1445,9 @@ class ChordWizard {
         });
         maxFretLabel.appendChild(maxFretSel);
 
-        filters.append(rootSel, typeSel, spanLabel, notesLabel, invLabel, minFretLabel, maxFretLabel);
+        filters.append(spanLabel, notesLabel, invLabel, minFretLabel, maxFretLabel);
+        domdest.appendChild(rootRow);
+        domdest.appendChild(typeRow);
         domdest.appendChild(filters);
 
         // ── grille explorateur ──
