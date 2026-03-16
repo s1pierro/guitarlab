@@ -1098,6 +1098,11 @@ div.statebar {
     padding: 0.4em 0.5em 0.5em;
     background: #fff;
 }
+.part-editor-inner {
+    display: flex;
+    flex-direction: column;
+    min-width: max-content;
+}
 
 /* ── piste accord — deux rangées ── */
 .part-chord-track {
@@ -1208,9 +1213,31 @@ div.statebar {
 /* colonnes hors-durée (après le premier délimitateur) */
 .part-col.out-of-range,
 .part-ctrack-cell.out-of-range,
-.part-ctrack-delim-cell.out-of-range {
+.part-ctrack-delim-cell.out-of-range,
+.part-ruler-cell.out-of-range {
     opacity: 0.3;
 }
+
+/* ── règle de mesures ── */
+.part-ruler {
+    display: flex;
+    flex-direction: row;
+    border-top: 1px solid #e8e8e8;
+}
+.part-ruler-cell {
+    flex: 1;
+    min-width: 0.85em;
+    height: 1.4em;
+    display: flex;
+    align-items: center;
+    padding-left: 0.15em;
+    border-right: 1px solid #ececec;
+    font-size: 0.6em;
+    color: #ccc;
+    user-select: none;
+}
+.part-ruler-cell.beat-start   { border-left: 1px solid #e0e0e0; }
+.part-ruler-cell.measure-start { color: #9977cc; font-weight: bold; }
 
 /* ─── Paramètres ─────────────────────────────────────────────────────────── */
 .ux-panel-content:has(.settings-link) {
