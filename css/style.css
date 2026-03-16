@@ -986,36 +986,52 @@ div.statebar {
 #partitions-content {
     background: #f8f8f8;
 }
-.partition-tabs {
+
+/* ── pills partitions ── */
+.part-pill-row {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.15em;
-    padding: 0.35em 0.5em 0;
-    background: #efefef;
-    border-bottom: 1px solid #ddd;
+    gap: 0.35em;
+    padding: 0.4em 0.5em 0.3em;
 }
-.partition-tab {
+.part-pill {
+    padding: 0.25em 0.65em;
+    background: #000000cc;
+    border: none;
+    border-radius: 1em;
+    font-family: inherit;
+    font-size: 0.82em;
+    font-weight: bold;
+    color: #fff;
+    cursor: pointer;
+    opacity: 0.45;
+    transition: opacity 0.15s;
+}
+.part-pill:hover  { opacity: 0.7; }
+.part-pill.active { opacity: 1; }
+.part-pill--add   { opacity: 0.3; }
+.part-pill--add:hover { opacity: 0.6; }
+
+/* ── nom éditable ── */
+.partition-name-wrap {
     display: flex;
     align-items: center;
     gap: 0.2em;
-    padding: 0.2em 0.5em;
-    border-radius: 0.3em 0.3em 0 0;
-    background: #e0e0e0;
-    font-size: 0.8em;
+}
+.partition-name {
+    font-weight: bold;
+    outline: none;
+    min-width: 2em;
+    cursor: text;
+}
+.partition-name-del {
+    opacity: 0.3;
     cursor: pointer;
+    font-size: 0.85em;
 }
-.partition-tab.active {
-    background: #fff;
-    border: 1px solid #ccc;
-    border-bottom: 1px solid #fff;
-    margin-bottom: -1px;
-}
-.partition-tab-name { outline: none; min-width: 2em; }
-.partition-tab-del  { opacity: 0.4; cursor: pointer; }
-.partition-tab-del:hover { opacity: 1; }
-.partition-tab-add  { background: transparent; opacity: 0.5; font-size: 1.05em; padding: 0.1em 0.5em; }
-.partition-tab-add:hover { opacity: 1; }
+.partition-name-del:hover { opacity: 1; }
 
+/* ── contrôles ── */
 .partition-controls {
     display: flex;
     align-items: center;
@@ -1027,7 +1043,6 @@ div.statebar {
 .partition-bpm-wrap {
     display: flex;
     align-items: center;
-    gap: 0;
     border: 1px solid #ccc;
     border-radius: 0.4em;
     overflow: hidden;
@@ -1039,6 +1054,7 @@ div.statebar {
     padding: 0.15em 0.55em;
     cursor: pointer;
     line-height: 1;
+    font-family: inherit;
 }
 .partition-bpm-btn:hover { background: #d0d0d0; }
 .partition-bpm-display {
@@ -1061,111 +1077,166 @@ div.statebar {
     font-size: 1em;
     padding: 0.2em 0.55em;
     line-height: 1;
+    font-family: inherit;
 }
 .partition-play-btn:hover,
 .partition-loop-btn:hover  { background: #ddd; }
 .partition-loop-btn.active { background: #ede9fe; color: #7c3aed; border-color: #c4b5fd; }
 
-.partition-timeline {
+/* ── sélecteur de division ── */
+.part-div-wrap {
     display: flex;
-    flex-direction: row;
-    overflow-x: auto;
-    gap: 0;
-    padding: 0.4em 0.5em 0.5em;
-    background: #fff;
-    align-items: stretch;
-}
-.partition-slot {
-    display: flex;
-    flex-direction: column;
-    border: 1px solid #ddd;
-    border-radius: 0.25em;
-    margin-right: 0.35em;
-    min-width: 9em;
-    flex-shrink: 0;
+    border: 1px solid #ccc;
+    border-radius: 0.4em;
     overflow: hidden;
+    margin-left: auto;
 }
-.partition-chord-header {
-    background: #f0e8ff;
-    min-height: 3.2em;
+.part-div-btn {
+    border: none;
+    border-left: 1px solid #ccc;
+    background: #eee;
+    font-size: 0.75em;
+    padding: 0.2em 0.5em;
+    cursor: pointer;
+    font-family: inherit;
+    line-height: 1;
+}
+.part-div-btn:first-child { border-left: none; }
+.part-div-btn:hover  { background: #ddd; }
+.part-div-btn.active { background: #ede9fe; color: #7c3aed; }
+
+/* ── éditeur (scrollable) ── */
+.partition-editor {
+    overflow-x: auto;
+    background: #fff;
+}
+
+/* ── barre de durée ── */
+.part-dur-bar {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    padding: 0.3em 0.5em;
+    border-bottom: 1px solid #eee;
+    border: 1px solid #ccc;
+    border-radius: 0.3em;
+    width: fit-content;
+    margin: 0.3em 0.5em;
+}
+.part-dur-btn {
+    border: none;
+    border-left: 1px solid #ccc;
+    background: #f5f5f5;
+    font-family: inherit;
+    font-size: 0.78em;
+    padding: 0.15em 0.55em;
+    cursor: pointer;
+    line-height: 1;
+    color: #555;
+}
+.part-dur-btn:first-child { border-left: none; }
+.part-dur-btn:hover  { background: #ddd; }
+.part-dur-btn.active { background: #ede9fe; color: #7c3aed; font-weight: bold; }
+
+/* ── séquenceur — grille CSS unifiée ── */
+.part-seq-grid {
+    display: grid;
+    /* grid-template-columns défini en JS : repeat(N, minmax(0.85em, 3rem)) */
+    grid-template-rows: 3em 1.4em repeat(6, 1.1em) 1.4em;
+    border-bottom: 1px solid #ddd;
+}
+
+/* rangée 1 — accords */
+.part-ctrack-cell {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 0.15em;
-    padding: 0.4em 1.4em 0.3em 0.4em;
-    border-bottom: 1px solid #ddd;
-    position: relative;
-    cursor: default;
+    gap: 0.1em;
+    padding: 0.15em 0.1em;
+    border-right: 1px solid #ececec;
+    cursor: pointer;
+    overflow: hidden;
+    background: #fafafa;
+    transition: background 0.08s;
 }
-.partition-chord-frets {
-    display: flex;
-    gap: 0.12em;
-}
-.partition-chord-frets span {
-    background: #ddd4f4;
-    border-radius: 0.2em;
-    padding: 0.05em 0.18em;
-    font-size: 0.62em;
-    font-family: monospace;
-    min-width: 1.1em;
-    text-align: center;
-    color: #333;
-}
-.partition-chord-name {
-    font-size: 0.78em;
+.part-ctrack-cell.beat-start   { border-left: 1px solid #b8b8b8; }
+.part-ctrack-cell.chord-active { background: rgba(124, 58, 237, 0.07); }
+.part-ctrack-cell.chord-start  { background: #f0e8ff; }
+.part-ctrack-cell:not(.chord-start):hover { background: #f3eeff; }
+.part-chord-name-label {
+    writing-mode: vertical-lr;
+    transform: rotate(180deg);
+    font-size: 0.72em;
     font-weight: bold;
     color: #5b21b6;
+    white-space: nowrap;
+    overflow: hidden;
+    max-height: 100%;
 }
-.partition-chord-apply,
-.partition-chord-del {
-    position: absolute;
-    font-size: 0.8em;
-    cursor: pointer;
-    opacity: 0.45;
-    top: 0.2em;
-}
-.partition-chord-apply:hover,
-.partition-chord-del:hover { opacity: 1; }
-.partition-chord-apply { right: 1.3em; }
-.partition-chord-del   { right: 0.3em; }
 
-.partition-assign-btn {
-    font-size: 1.3em;
-    opacity: 0.3;
+/* rangée 2 — délimiteurs de fin */
+.part-ctrack-delim-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-right: 1px solid #ececec;
     cursor: pointer;
-    padding: 0.35em;
+    font-size: 0.7em;
+    color: #bbb;
+    background: #fafafa;
+    transition: background 0.08s, color 0.08s;
 }
-.partition-assign-btn:hover { opacity: 0.85; }
+.part-ctrack-delim-cell.beat-start   { border-left: 1px solid #b8b8b8; }
+.part-ctrack-delim-cell.delim-active { color: #7c3aed; background: #ede9fe; }
+.part-ctrack-delim-cell:not(.delim-active):hover { background: #f3eeff; color: #9966cc; }
 
-.partition-grid      { display: flex; flex-direction: column; flex: 1; }
-.partition-grid-row  { display: flex; flex: 1; min-height: 1.15em; }
-.partition-cell {
-    flex: 1;
+/* rangées 3–8 — picking */
+.part-cell {
     border-right: 1px solid #ececec;
     border-bottom: 1px solid #ececec;
-    cursor: pointer;
     background: #fafafa;
     transition: background 0.08s;
     touch-action: none;
+    cursor: pointer;
 }
-.partition-cell.beat-start { border-left: 1px solid #b8b8b8; }
-.partition-cell.active     { background: #7c3aed; }
-.partition-cell:hover:not(.active) { background: #ddd8f8; }
+.part-cell.beat-start        { border-left: 1px solid #b8b8b8; }
+.part-cell:hover             { background: #ddd8f8; }
 
-.partition-slot-add {
+/* barre de note — par-dessus la click zone, pointer-events none */
+.part-note-bar {
+    background: #7c3aed;
+    border-radius: 0.15em;
+    margin: 1px;
+    pointer-events: none;
+    z-index: 1;
+}
+.part-note-bar.out-of-range { opacity: 0.3; }
+
+/* rangée 9 — règle de mesure */
+.part-ruler-cell {
     display: flex;
     align-items: center;
     justify-content: center;
-    min-width: 2.2em;
-    cursor: pointer;
-    font-size: 1.5em;
-    opacity: 0.35;
-    flex-shrink: 0;
-    padding: 0 0.4em;
-    align-self: center;
+    font-size: 0.6em;
+    color: #aaa;
+    border-right: 1px solid #ececec;
+    background: #f5f5f5;
 }
-.partition-slot-add:hover { opacity: 0.85; }
+.part-ruler-cell.beat-start { border-left: 1px solid #b8b8b8; }
+
+/* playhead — toutes les cellules de la colonne */
+.part-ctrack-cell.playhead,
+.part-ctrack-delim-cell.playhead,
+.part-cell.playhead,
+.part-ruler-cell.playhead { background: rgba(124, 58, 237, 0.08); }
+/* supprimé : .part-cell.active n'existe plus (note bar gère la couleur) */
+
+/* hors-durée (après le premier délimitateur) */
+.part-ctrack-cell.out-of-range,
+.part-ctrack-delim-cell.out-of-range,
+.part-cell.out-of-range,
+.part-ruler-cell.out-of-range { opacity: 0.3; }
 
 /* ─── Paramètres ─────────────────────────────────────────────────────────── */
 .ux-panel-content:has(.settings-link) {
