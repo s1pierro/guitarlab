@@ -85,6 +85,34 @@
     padding: 0.3em 0.25em;
     gap: 0.25em;
 }
+#cam-frames {
+    position: absolute;
+    bottom: 2.8em;
+    left: 0.5em;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.3em;
+    z-index: 50;
+}
+.cam-frame-btn {
+    font-family: inherit;
+    font-size: 0.78em;
+    font-weight: 600;
+    color: #ffffffaa;
+    background: #000000bb;
+    border: 1px solid transparent;
+    border-radius: 1em;
+    padding: 0.2em 0.6em;
+    cursor: pointer;
+    letter-spacing: 0.02em;
+    transition: color 0.12s, border-color 0.12s;
+}
+.cam-frame-btn:hover { color: #fff; }
+.cam-frame-btn--active {
+    color: #fff;
+    border-color: #ffffff55;
+}
 #app-stamp {
     position: absolute;
     bottom: 0.6em;

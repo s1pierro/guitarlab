@@ -1452,12 +1452,61 @@ class ChordWizard {
         render();
     }
 }
+// ── Cadrages prédéfinis ───────────────────────────────────────────────────────
+// pos/target : coordonnées 3D de la caméra / du point visé
+// screen     : position cible (cx, cy) normalisée 0..1 où doit atterrir `target`
+//              sur l'écran après l'animation (auto-alignement par pan).
+//              cx=0.5 cy=0.5 = centré. cx<0.5 = décalé vers la gauche.
+// frets : { strMin, strMax, fretIdx1, fretIdx2 }
+// fretIdx est 0-basé dans fingerprints[] : idx 0 = frette 1, idx 17 = frette 18
+const CAMERA_FRAMES = [
+    {
+        id: 'full',  label: '1–18',
+        pos:    { x: 0.13, y: -0.06, z: 1.55 },
+        target: { x: 0.13, y:  0.06, z: -0.02 },
+        screen: { cx: 0.165, cy: 0.5 },
+        frets:  { strMin: 0, strMax: 5, fretIdx1: 0, fretIdx2: 17 },
+    },
+    {
+        id: 'open',  label: 'I',
+        pos:    { x: 0.13, y:  0.12, z: 0.88 },
+        target: { x: 0.13, y:  0.24, z: -0.02 },
+        screen: { cx: 0.165, cy: 0.5 },
+        frets:  { strMin: 0, strMax: 5, fretIdx1: 0, fretIdx2: 3 },
+    },
+    {
+        id: 'pos5',  label: 'V',
+        pos:    { x: 0.13, y: -0.01, z: 0.88 },
+        target: { x: 0.13, y:  0.11, z: -0.02 },
+        screen: { cx: 0.165, cy: 0.5 },
+        frets:  { strMin: 0, strMax: 5, fretIdx1: 3, fretIdx2: 7 },
+    },
+    {
+        id: 'pos9',  label: 'IX',
+        pos:    { x: 0.13, y: -0.07, z: 0.88 },
+        target: { x: 0.13, y:  0.05, z: -0.02 },
+        screen: { cx: 0.165, cy: 0.5 },
+        frets:  { strMin: 0, strMax: 5, fretIdx1: 7, fretIdx2: 11 },
+    },
+    {
+        id: 'pos12', label: 'XII',
+        pos:    { x: 0.13, y: -0.15, z: 0.88 },
+        target: { x: 0.13, y: -0.03, z: -0.02 },
+        screen: { cx: 0.165, cy: 0.5 },
+        frets:  { strMin: 0, strMax: 5, fretIdx1: 10, fretIdx2: 14 },
+    },
+];
+
 class Cameraman {
     constructor (onNeedRender = () => {}, domElement = document.body) {
 
         this.onNeedRender = onNeedRender;
         this.viewRatio = 1.0;
         this.normalisedmouse = {x: 0, y: 0};
+        this._flyRaf = null;
+        this.scene = null;          // injecté depuis GroundRender après init
+        this._debugMeshes = [];
+        this._debug = false;        // activer pour les outils de calibration cadrages
 
         this.camera = new THREE.PerspectiveCamera( 25, window.innerWidth / window.innerHeight, 0.1, 15 );
         this.camera.position.set( 0.13203648995258088, -0.05773723849390569, 1.104895121140156 );
@@ -1504,6 +1553,201 @@ class Cameraman {
         this.controls.target.set(v.target.x, v.target.y, v.target.z);
         this.controls.update();
     }
+    flyTo (frame, durationMs = 550, strings = null) {
+        if (this._flyRaf) { cancelAnimationFrame(this._flyRaf); this._flyRaf = null; }
+        this._debugSpheres(frame, strings);
+
+        // Précalcule le pan d'alignement depuis la position finale frame.pos/target,
+        // puis l'intègre dans la destination du lerp — pas de saut en fin d'animation.
+        const alignPan = this._computeAlignPan(frame, strings);
+
+        const p0 = this.camera.position.clone();
+        const t0 = this.controls.target.clone();
+        const p1 = new THREE.Vector3(frame.pos.x,    frame.pos.y,    frame.pos.z).add(alignPan);
+        const t1 = new THREE.Vector3(frame.target.x, frame.target.y, frame.target.z).add(alignPan);
+        const t_start = performance.now();
+        const tick = (now) => {
+            const raw  = Math.min((now - t_start) / durationMs, 1);
+            const ease = raw < 0.5 ? 2 * raw * raw : -1 + (4 - 2 * raw) * raw;
+            this.camera.position.lerpVectors(p0, p1, ease);
+            this.controls.target.lerpVectors(t0, t1, ease);
+            this.controls.update();
+            this.onNeedRender();
+            if (raw < 1) {
+                this._flyRaf = requestAnimationFrame(tick);
+            } else {
+                this._flyRaf = null;
+                this._logAlign(frame, strings);  // vérification log + overlay, sans bouger
+            }
+        };
+        this._flyRaf = requestAnimationFrame(tick);
+    }
+
+    // Calcule le vecteur de pan nécessaire pour centrer l'ancre sur frame.screen,
+    // en simulant la caméra à frame.pos/target sans la déplacer réellement.
+    _computeAlignPan (frame, strings = null) {
+        if (!frame.screen) return new THREE.Vector3();
+        const { cx = 0.5, cy = 0.5 } = frame.screen;
+        const tNdcX = cx * 2 - 1;
+        const tNdcY = -(cy * 2 - 1);
+
+        // Ancre = milieu des coins de frettes ou frame.target
+        let anchor;
+        if (strings && frame.frets) {
+            const f  = frame.frets;
+            const p1 = strings[f.strMin].fingerprints[f.fretIdx1];
+            const p2 = strings[f.strMax].fingerprints[f.fretIdx2];
+            anchor = new THREE.Vector3(
+                (p1.x + p2.x) / 2, (p1.y + p2.y) / 2, (p1.z + p2.z) / 2,
+            );
+        } else {
+            anchor = new THREE.Vector3(frame.target.x, frame.target.y, frame.target.z);
+        }
+
+        // Simule la vue depuis frame.pos regardant frame.target
+        const camPos  = new THREE.Vector3(frame.pos.x,    frame.pos.y,    frame.pos.z);
+        const viewDir = new THREE.Vector3(frame.target.x, frame.target.y, frame.target.z)
+            .sub(camPos).normalize();
+        // right = vecteur droit caméra
+        const right  = new THREE.Vector3().crossVectors(viewDir, this.camera.up).normalize();
+        // camUp = vecteur haut réel de la vue, orthogonal à viewDir
+        // (this.camera.up n'est pas perpendiculaire à viewDir quand la caméra est inclinée)
+        const camUp  = new THREE.Vector3().crossVectors(right, viewDir).normalize();
+
+        // Projection manuelle de l'ancre depuis cette position simulée
+        const toAnchor = anchor.clone().sub(camPos);
+        const depth    = toAnchor.dot(viewDir);
+        const halfH    = Math.tan(this.camera.fov * Math.PI / 360) * Math.max(depth, 0.01);
+        const halfW    = halfH * this.camera.aspect;
+        const ndcX     = toAnchor.dot(right) / halfW;
+        const ndcY     = toAnchor.dot(camUp)  / halfH;  // camUp orthogonal à viewDir
+
+        const errX = ndcX - tNdcX;
+        const errY = ndcY - tNdcY;
+        return right.clone().multiplyScalar(errX * halfW)
+            .addScaledVector(camUp, errY * halfH);
+    }
+
+    // Log + overlay post-animation (vérification uniquement, sans mouvement caméra).
+    _logAlign (frame, strings = null) {
+        if (!frame.screen) return;
+        const { cx = 0.5, cy = 0.5 } = frame.screen;
+        const tNdcX = cx * 2 - 1;
+        const tNdcY = -(cy * 2 - 1);
+
+        let anchor;
+        if (strings && frame.frets) {
+            const f  = frame.frets;
+            const p1 = strings[f.strMin].fingerprints[f.fretIdx1];
+            const p2 = strings[f.strMax].fingerprints[f.fretIdx2];
+            anchor = new THREE.Vector3(
+                (p1.x + p2.x) / 2, (p1.y + p2.y) / 2, (p1.z + p2.z) / 2,
+            );
+        } else {
+            anchor = new THREE.Vector3(frame.target.x, frame.target.y, frame.target.z);
+        }
+
+        this.camera.updateMatrixWorld();
+        const ndc     = anchor.clone().project(this.camera);
+        const reached = { cx: (ndc.x + 1) / 2, cy: (1 - ndc.y) / 2 };
+        if (!this._debug) return;
+        console.log(`[Cameraman] ${frame.id} — cible: cx=${cx.toFixed(3)} cy=${cy.toFixed(3)} | atteint: cx=${reached.cx.toFixed(3)} cy=${reached.cy.toFixed(3)}`);
+        this._debugOverlay(frame.id, cx, cy, reached.cx, reached.cy);
+    }
+
+    // Sphères debug 3D : coin 1 (bleu) + coin 2 (orange) de la boîte de frettes.
+    // Remplacées à chaque flyTo.
+    _debugSpheres (frame, strings = null) {
+        if (!this._debug || !this.scene) return;
+        this._debugMeshes.forEach(m => {
+            this.scene.remove(m);
+            m.geometry.dispose();
+            m.material.dispose();
+        });
+        this._debugMeshes = [];
+
+        const mkSphere = (pos, color) => {
+            const mesh = new THREE.Mesh(
+                new THREE.SphereGeometry(0.008, 10, 8),
+                new THREE.MeshBasicMaterial({ color, depthTest: false })
+            );
+            mesh.position.set(pos.x, pos.y, pos.z);
+            mesh.renderOrder = 999;
+            this.scene.add(mesh);
+            this._debugMeshes.push(mesh);
+        };
+
+        if (strings && frame.frets) {
+            const f = frame.frets;
+            const p1 = strings[f.strMin].fingerprints[f.fretIdx1];
+            const p2 = strings[f.strMax].fingerprints[f.fretIdx2];
+            mkSphere(p1, 0x4488ff);  // bleu   — coin strMin/fretIdx1
+            mkSphere(p2, 0xff8800);  // orange — coin strMax/fretIdx2
+        } else {
+            mkSphere(frame.pos,    0x4488ff);
+            mkSphere(frame.target, 0xff8800);
+        }
+    }
+
+    // Overlay debug : rectangle englobant le point cible (vert) et le point atteint (rouge)
+    // + croix sur chacun. Disparaît après 4 secondes.
+    _debugOverlay (frameId, tcx, tcy, rcx, rcy) {
+        const prev = document.getElementById('cam-debug-overlay');
+        if (prev) prev.remove();
+
+        const W = window.innerWidth, H = window.innerHeight;
+        // Pixels des deux points
+        const tx = tcx * W, ty = tcy * H;  // cible (vert)
+        const rx = rcx * W, ry = rcy * H;  // atteint (rouge)
+
+        const minX = Math.min(tx, rx) - 12, maxX = Math.max(tx, rx) + 12;
+        const minY = Math.min(ty, ry) - 12, maxY = Math.max(ty, ry) + 12;
+
+        const ov = document.createElement('div');
+        ov.id = 'cam-debug-overlay';
+        Object.assign(ov.style, {
+            position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 9999,
+        });
+
+        const mkCross = (x, y, color) => {
+            const s = `position:absolute;background:${color};pointer-events:none;`;
+            const h = document.createElement('div');
+            h.style.cssText = s + `left:${x-10}px;top:${y-1}px;width:20px;height:2px;`;
+            const v = document.createElement('div');
+            v.style.cssText = s + `left:${x-1}px;top:${y-10}px;width:2px;height:20px;`;
+            ov.appendChild(h); ov.appendChild(v);
+        };
+
+        // Rectangle englobant
+        const box = document.createElement('div');
+        Object.assign(box.style, {
+            position: 'absolute',
+            left: `${minX}px`, top: `${minY}px`,
+            width: `${maxX - minX}px`, height: `${maxY - minY}px`,
+            border: '1px dashed #fff8',
+            boxSizing: 'border-box',
+            pointerEvents: 'none',
+        });
+        ov.appendChild(box);
+
+        mkCross(tx, ty, '#00ff88');  // cible  — vert
+        mkCross(rx, ry, '#ff4444');  // atteint — rouge
+
+        // Label
+        const lbl = document.createElement('div');
+        Object.assign(lbl.style, {
+            position: 'absolute', left: `${minX}px`, top: `${minY - 18}px`,
+            color: '#fff', fontSize: '11px', fontFamily: 'monospace',
+            background: '#0008', padding: '1px 4px', borderRadius: '3px',
+            whiteSpace: 'nowrap',
+        });
+        lbl.textContent = `${frameId}  ●cible(${tcx.toFixed(2)},${tcy.toFixed(2)})  ●atteint(${rcx.toFixed(2)},${rcy.toFixed(2)})`;
+        ov.appendChild(lbl);
+
+        document.body.appendChild(ov);
+        setTimeout(() => ov.remove(), 4000);
+    }
+
     onViewChange (cb) {
         this.controls.addEventListener('change', cb);
     }
@@ -1590,6 +1834,7 @@ class GroundRender {
         this.scene = new THREE.Scene();              //#fffdf0
         this.scene.background = new THREE.Color( 0xeeeeee );
         this.scene.fog = new THREE.Fog( 0xeeeeee, 2, 35 );
+        this.cameraman.scene = this.scene;
 
 
                   let plane = new THREE.Mesh(
@@ -1846,9 +2091,11 @@ class GroundRender {
     getScreenCoordinates(obj) {
         return this.cameraman.getScreenCoordinates(obj);
     }
-    getView ()       { return this.cameraman.getView(); }
-    setView (v)      { this.cameraman.setView(v); }
-    onViewChange (cb){ this.cameraman.onViewChange(cb); }
+    getView ()            { return this.cameraman.getView(); }
+    setView (v)           { this.cameraman.setView(v); }
+    onViewChange (cb)     { this.cameraman.onViewChange(cb); }
+    flyTo (frame, ms)     { this.cameraman.flyTo(frame, ms, this.strings); }
+    clearZone ()          { this.cameraman.camera.clearViewOffset(); this.cameraman.camera.updateProjectionMatrix(); }
     stuffat (mouse) {
         let stuff = { c: null,  object: null };
         const raycaster = new THREE.Raycaster();
@@ -2499,6 +2746,8 @@ class Application {
                     const ov = views[this._orientKey()];
                     if (ov) { this.groundrender.setView(ov); this.groundrender.render(); }
                 });
+                // boutons de cadrage
+                this._buildCameraFrameButtons();
             }
         );
         this.ux = document.createElement('div');
@@ -2737,6 +2986,40 @@ class Application {
 
         this.pluckpad = new PluckPad(this.computedguitar.strings, pluckWrap);
     }
+    _buildCameraFrameButtons () {
+        const strip = document.createElement('div');
+        strip.id = 'cam-frames';
+
+        // bouton "Libre" — restaure la vue utilisateur et annule le zone offset
+        const freeBtn = document.createElement('button');
+        freeBtn.className = 'cam-frame-btn cam-frame-btn--active';
+        freeBtn.textContent = '↺';
+        freeBtn.title = 'Vue libre';
+        freeBtn.addEventListener('click', () => {
+            this.groundrender.clearZone();
+            const v = this.storage.get('camera-views', {})[this._orientKey()];
+            if (v) { this.groundrender.setView(v); this.groundrender.render(); }
+            strip.querySelectorAll('.cam-frame-btn').forEach(b => b.classList.remove('cam-frame-btn--active'));
+            freeBtn.classList.add('cam-frame-btn--active');
+        });
+        strip.appendChild(freeBtn);
+
+        CAMERA_FRAMES.forEach(frame => {
+            const btn = document.createElement('button');
+            btn.className = 'cam-frame-btn';
+            btn.textContent = frame.label;
+            btn.title = frame.label;
+            btn.addEventListener('click', () => {
+                this.groundrender.flyTo(frame);
+                strip.querySelectorAll('.cam-frame-btn').forEach(b => b.classList.remove('cam-frame-btn--active'));
+                btn.classList.add('cam-frame-btn--active');
+            });
+            strip.appendChild(btn);
+        });
+
+        this.appbody.appendChild(strip);
+    }
+
     start () {
 
     }
