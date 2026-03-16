@@ -1263,9 +1263,11 @@ class ChordWizard {
 
             // grille principale
             grid.innerHTML = '';
+            // minNotes plafonné par le nombre d'intervalles du type (ex: quinte = 2, fondamentale = 1)
+            const effectiveMinNotes = Math.min(state.minNotes, chordtypes[state.chordTypeIndex].intervals.length);
             const voicings = this.buildVoicings(state.root, state.chordTypeIndex, {
                 maxSpan:        state.maxSpan,
-                minNotes:       state.minNotes,
+                minNotes:       effectiveMinNotes,
                 maxNotes:       state.maxNotes,
                 allowInversion: state.allowInversion,
                 minFret:        state.minFret,
