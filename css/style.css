@@ -1118,7 +1118,7 @@ div.statebar {
 /* rangée 1 — accords */
 .part-ctrack-chord-row { min-height: 5.5em; }
 .part-ctrack-cell {
-    flex: 1;
+    flex: 0 0 1.4em;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -1127,7 +1127,6 @@ div.statebar {
     padding: 0.15em 0.1em;
     border-right: 1px solid #ececec;
     cursor: pointer;
-    min-width: 0.85em;
     overflow: hidden;
     position: relative;
     background: #fafafa;
@@ -1168,13 +1167,12 @@ div.statebar {
 /* rangée 2 — délimiteurs de fin */
 .part-ctrack-delim-row { min-height: 1.4em; }
 .part-ctrack-delim-cell {
-    flex: 1;
+    flex: 0 0 1.4em;
     display: flex;
     align-items: center;
     justify-content: center;
     border-right: 1px solid #ececec;
     cursor: pointer;
-    min-width: 0.85em;
     font-size: 0.7em;
     color: #bbb;
     background: #fafafa;
@@ -1190,12 +1188,11 @@ div.statebar {
     flex-direction: row;
 }
 .part-col {
+    flex: 0 0 1.4em;
     display: flex;
     flex-direction: column;
-    flex: 1;
     border-right: 1px solid #ececec;
     cursor: pointer;
-    min-width: 0.85em;
 }
 .part-col.beat-start { border-left: 1px solid #b8b8b8; }
 .part-col.playhead   { background: rgba(124, 58, 237, 0.08); }
@@ -1225,8 +1222,7 @@ div.statebar {
     border-top: 1px solid #e8e8e8;
 }
 .part-ruler-cell {
-    flex: 1;
-    min-width: 0.85em;
+    flex: 0 0 1.4em;
     height: 1.4em;
     display: flex;
     align-items: center;
