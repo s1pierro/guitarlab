@@ -1143,22 +1143,22 @@ div.statebar {
 .en-note {
     font-size: 2em;
     font-weight: 700;
-    color: #fff;
+    color: #111;
     min-width: 2.8em;
     letter-spacing: -0.02em;
 }
 .en-cents {
     font-size: 0.8em;
-    color: #ffffff55;
+    color: #aaa;
 }
-.en-cents--good { color: #2ecc71; }
-.en-cents--warn { color: #f39c12; }
-.en-cents--bad  { color: #e74c3c; }
+.en-cents--good { color: #27ae60; }
+.en-cents--warn { color: #d68910; }
+.en-cents--bad  { color: #c0392b; }
 /* aiguille accordeur */
 #ecoute-needle {
     position: relative;
     height: 4px;
-    background: #ffffff18;
+    background: #00000012;
     border-radius: 2px;
     margin: 0.3em 0 0.4em;
 }
@@ -1169,7 +1169,7 @@ div.statebar {
     top: -3px;
     width: 1px;
     height: 10px;
-    background: #ffffff22;
+    background: #00000022;
 }
 #ecoute-needle::before { left: 25%; }
 #ecoute-needle::after  { right: 25%; }
@@ -1178,7 +1178,7 @@ div.statebar {
     top: -4px;
     width: 3px;
     height: 12px;
-    background: #fff;
+    background: #333;
     border-radius: 2px;
     transform: translateX(-50%);
     transition: left 0.08s linear;
@@ -1189,7 +1189,7 @@ div.statebar {
     height: 56px;
     margin-top: 0.2em;
     border-radius: 0.4em;
-    background: #00000044;
+    background: #00000010;
     display: block;
 }
 
