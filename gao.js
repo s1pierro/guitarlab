@@ -1506,6 +1506,7 @@ class Cameraman {
         this._flyRaf = null;
         this.scene = null;          // injecté depuis GroundRender après init
         this._debugMeshes = [];
+        this._debug = false;        // activer pour les outils de calibration cadrages
 
         this.camera = new THREE.PerspectiveCamera( 25, window.innerWidth / window.innerHeight, 0.1, 15 );
         this.camera.position.set( 0.13203648995258088, -0.05773723849390569, 1.104895121140156 );
@@ -1649,6 +1650,7 @@ class Cameraman {
         this.camera.updateMatrixWorld();
         const ndc     = anchor.clone().project(this.camera);
         const reached = { cx: (ndc.x + 1) / 2, cy: (1 - ndc.y) / 2 };
+        if (!this._debug) return;
         console.log(`[Cameraman] ${frame.id} — cible: cx=${cx.toFixed(3)} cy=${cy.toFixed(3)} | atteint: cx=${reached.cx.toFixed(3)} cy=${reached.cy.toFixed(3)}`);
         this._debugOverlay(frame.id, cx, cy, reached.cx, reached.cy);
     }
@@ -1656,7 +1658,7 @@ class Cameraman {
     // Sphères debug 3D : coin 1 (bleu) + coin 2 (orange) de la boîte de frettes.
     // Remplacées à chaque flyTo.
     _debugSpheres (frame, strings = null) {
-        if (!this.scene) return;
+        if (!this._debug || !this.scene) return;
         this._debugMeshes.forEach(m => {
             this.scene.remove(m);
             m.geometry.dispose();
