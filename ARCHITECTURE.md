@@ -13,7 +13,13 @@ Application
 ├── ComputedGuitar         — agrégateur des 6 cordes
 │   └── ComputedString ×6  — corde individuelle (UI + audio)
 ├── ChordWizard            — analyse, catalogue et favoris d'accords
-│   └── ChordPinBoard      — favoris d'accords
+│   └── ChordPinBoard      — favoris organisés en sets
+├── UXStack                — gestionnaire de la pile UX dynamique
+│   ├── PanelBibliotheque  — sets d'accords favoris (mini-stack interne)
+│   ├── PanelCatalogue     — explorateur de voicings
+│   ├── PanelPartitions    — séquenceur multi-partitions
+│   ├── PanelParametres    — reset, export, import de session
+│   └── PanelNotation      — référence symbolique intervalles + voicings
 └── PluckPad               — pad tactile de pincement (flottant, déplaçable)
 ```
 
@@ -88,14 +94,18 @@ Module de données musicales, sans logique applicative.
 | `get(key, fallback)` | Lit et désérialise une valeur, retourne `fallback` si absente |
 | `set(key, value)` | Sérialise et stocke une valeur |
 | `remove(key)` | Supprime une entrée |
+| `clear()` | Supprime toutes les clés du namespace |
+| `exportAll()` | Retourne un objet `{clé: valeur}` de toutes les entrées |
+| `importAll(data)` | Écrit un objet `{clé: valeur}` dans le storage |
 
 **Clés utilisées par `Application` :**
 | Clé | Contenu |
 |---|---|
-| `pinboard` | Liste des accords favoris (tableau de `Chord` sérialisés) |
-| `ux-open` | État ouvert/fermé des `<details>` (`pinboard`, `catalog`) |
+| `chord-sets` | Sets de favoris `{sets, activeSetId}` |
+| `ux-stack` | Ordre et état des panneaux `{order[], states{}}` |
 | `catalog-filters` | Filtres du catalogue (root, chordTypeIndex, maxSpan, minNotes, maxNotes, allowInversion, minFret, maxFret) |
 | `onair-frets` | Tableau de frettes actives au dernier changement d'état |
+| `partitions` | Données des partitions sérialisées |
 | `pluck-pos` | Position du PluckPad par orientation (`portrait`, `landscape`) |
 | `camera-views` | Vue caméra par orientation (`portrait`, `landscape`) |
 
@@ -196,26 +206,29 @@ Module de données musicales, sans logique applicative.
 ---
 
 ### `ChordPinBoard`
-**Responsabilité :** CRUD de la liste des accords favoris. Affichage et application d'un accord sauvegardé.
+**Responsabilité :** CRUD des accords favoris organisés en sets nommés. Affichage en mini-stack : set actif déplié en tête, autres sets en pastilles.
 
 **Constructeur :** `(onApplyChord, onStateChange)`
+
+**État :**
+- `sets[]` — tableau de sets `{id, name, chords[]}`
+- `activeSetId` — id du set courant
 
 **Méthodes / accesseurs principaux :**
 | Méthode | Description |
 |---|---|
-| `get chords` | Retourne `pinnedchords[]` |
-| `set chords(list)` | Restaure une liste en recréant les instances `Chord` (revival depuis JSON) |
-| `pinchord(chord)` | Ajoute ou retire un accord (bascule) |
+| `get data` / `set data(d)` | Sérialisation complète `{sets, activeSetId}` pour persistance |
+| `set chords(list)` | Migration ancien format plat → premier set |
+| `addSet()` | Crée un nouveau set vide, le rend actif |
+| `removeSet(id)` | Supprime un set (garde toujours au moins un) |
+| `pinchord(chord)` | Ajoute ou retire un accord du set actif (bascule) |
 | `pushchord(chord)` | Déclenche `onApplyChord(chord)` |
-| `kickchord(chord)` | Retire un accord de la liste |
-| `has(chord)` | Vérifie si un accord est déjà sauvegardé (via `Chord.sameAs`) |
-| `update()` | Rafraîchit le DOM |
-
-**Note :** le setter `chords` recrée des instances `Chord` à partir des données JSON brutes afin de garantir la disponibilité de `sameAs()` après restauration depuis `localStorage`.
+| `has(chord)` | Vérifie si un accord est dans le set actif |
+| `update()` | Rafraîchit le DOM : set actif déplié + autres sets en pastilles |
 
 **Callbacks émis :**
 - `onApplyChord(chord)` — au clic sur un accord sauvegardé
-- `onStateChange()` — à chaque mutation de la liste
+- `onStateChange()` — à chaque mutation
 
 ---
 
@@ -283,6 +296,53 @@ Module de données musicales, sans logique applicative.
 
 ---
 
+### `UXPanel` (base)
+**Responsabilité :** Classe de base pour chaque panneau de la pile UX. Gère la création lazy du DOM étendu et du bouton réduit.
+
+**Constructeur :** `(id, label, icon)`
+
+**Cycle de vie :**
+- `mountContent(container)` — à surcharger, appelé une seule fois au premier dépliage
+- `onExpanded()` — à surcharger, appelé à chaque dépliage (ex. rechargement du catalogue)
+- `getPanel()` — retourne l'élément DOM déplié (crée + monte si nécessaire)
+- `getButton()` — retourne la pastille réduite
+
+**Propriété injectée :** `_stack` — référence à l'`UXStack` parent
+
+---
+
+### `UXStack`
+**Responsabilité :** Gestionnaire de la pile UX. Maintient l'ordre des panneaux, orchestre expand/collapse, persiste l'état.
+
+**Constructeur :** `(storage)`
+
+**Comportement :**
+- `expand(panel)` — déplie un panneau, le remonte en tête de `#ux-expanded`
+- `collapse(panel)` — replie un panneau, le place en tête de `#ux-collapsed`
+- `_render()` — reconstruit les deux zones sans recréer les éléments DOM
+- `_save()` — persiste `{order[], states{}}` sous la clé `ux-stack`
+
+**Structure DOM gérée :**
+```
+#ux-expanded    — panneaux dépliés (flex column, scrollable)
+#ux-collapsed   — pastilles pill (flex wrap)
+```
+
+---
+
+### `PanelBibliotheque` · `PanelCatalogue` · `PanelPartitions` · `PanelParametres` · `PanelNotation`
+Chacune étend `UXPanel` et encapsule construction DOM + dépendances.
+
+| Panel | Dépendances injectées | Contenu |
+|---|---|---|
+| `PanelBibliotheque` | `chordwizard` | Sets de favoris via `ChordPinBoard` |
+| `PanelCatalogue` | `chordwizard`, `computedguitar`, `groundrender`, `storage` | Catalogue de voicings (rechargé à chaque `onExpanded`) |
+| `PanelPartitions` | `partitions` | Séquenceur `PartitionManager` (montage lazy) |
+| `PanelParametres` | `storage` | Liens reset / export / import session |
+| `PanelNotation` | aucune | Référence symbolique intervalles + qualificatifs de voicing |
+
+---
+
 ### `Application`
 **Responsabilité :** Point d'entrée. Crée la hiérarchie DOM, instancie toutes les classes, câble tous les callbacks, orchestre la persistance.
 
@@ -291,15 +351,13 @@ Module de données musicales, sans logique applicative.
 **Structure DOM créée :**
 ```
 #app-body
-├── #app-stamp          — indicateur de chargement / branding
+├── #app-stamp          — version + branding (bas gauche)
 ├── #touch-layer        — zone de touch pour OrbitControls + raycast
 ├── #render-layer       — canvas WebGL
 ├── #ux                 — panneau droit (66 vw), pointer-events isolés
-│   ├── #ux-brand
-│   ├── #onair-chord    — accord reconnu en temps réel
-│   └── #chord-library
-│       ├── <details>   — pinboard (favoris)
-│       └── <details>   — catalogue
+│   ├── #onair-chord    — accord reconnu en temps réel (fixe, toujours en tête)
+│   ├── #ux-expanded    — panneaux dépliés (UXStack)
+│   └── #ux-collapsed   — pastilles pill (UXStack)
 └── #pluck-pad-wrap     — <details> flottant déplaçable
 ```
 
@@ -308,9 +366,10 @@ Module de données musicales, sans logique applicative.
 2. `GroundRender` — charge le modèle 3D ; dans `onReady` : restauration vue caméra + écoute changements
 3. `GuitarModel` — `onStateChange` → guess + print + `AppStorage.set('onair-frets')`
 4. `ComputedGuitar` — 6 cordes + restauration `onair-frets`
-5. `ChordWizard` + `ChordPinBoard` — restauration pinboard depuis storage
-6. Catalogue — `<details>` avec `printCatalog` déclenché au `toggle`
-7. `PluckPad` — flottant draggable, position restaurée par orientation
+5. `ChordWizard` + `ChordPinBoard` — restauration sets depuis storage
+6. `PartitionManager` — restauration partitions depuis storage
+7. `UXStack` — instanciation des 5 panels, montage sur `#ux`
+8. `PluckPad` — flottant draggable, position restaurée par orientation
 
 **Câblage des callbacks :**
 | Source | Callback | Cible |
@@ -320,7 +379,8 @@ Module de données musicales, sans logique applicative.
 | `GroundRender` | `onReady()` | restauration vue caméra + `onViewChange` → storage |
 | `GuitarModel` | `onStateChange()` | `ChordWizard.guess/print` + `PluckPad.update` + storage |
 | `ChordPinBoard` | `onApplyChord(chord)` | `ComputedString[i].forcehold()` ×6 + `render()` |
-| `ChordPinBoard` | `onStateChange()` | `AppStorage.set('pinboard')` |
+| `ChordPinBoard` | `onStateChange()` | `AppStorage.set('chord-sets')` |
+| `PartitionManager` | `onStateChange()` | `AppStorage.set('partitions')` |
 | OrbitControls | `change` | `AppStorage.set('camera-views[orient]')` |
 | `matchMedia` | `change` (orientation) | restauration vue caméra + position PluckPad |
 | Strum button | `click` | `ComputedGuitar.strum()` |
