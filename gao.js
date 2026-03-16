@@ -1608,8 +1608,68 @@ class Cameraman {
         const ndcPost = anchor.clone().project(this.camera);
         const reached = { cx: (ndcPost.x + 1) / 2, cy: (1 - ndcPost.y) / 2 };
         console.log(`[Cameraman] ${frame.id} — cible: cx=${cx.toFixed(3)} cy=${cy.toFixed(3)} | atteint: cx=${reached.cx.toFixed(3)} cy=${reached.cy.toFixed(3)}`);
+        this._debugOverlay(frame.id, cx, cy, reached.cx, reached.cy);
 
         this.onNeedRender();
+    }
+
+    // Overlay debug : rectangle englobant le point cible (vert) et le point atteint (rouge)
+    // + croix sur chacun. Disparaît après 4 secondes.
+    _debugOverlay (frameId, tcx, tcy, rcx, rcy) {
+        const prev = document.getElementById('cam-debug-overlay');
+        if (prev) prev.remove();
+
+        const W = window.innerWidth, H = window.innerHeight;
+        // Pixels des deux points
+        const tx = tcx * W, ty = tcy * H;  // cible (vert)
+        const rx = rcx * W, ry = rcy * H;  // atteint (rouge)
+
+        const minX = Math.min(tx, rx) - 12, maxX = Math.max(tx, rx) + 12;
+        const minY = Math.min(ty, ry) - 12, maxY = Math.max(ty, ry) + 12;
+
+        const ov = document.createElement('div');
+        ov.id = 'cam-debug-overlay';
+        Object.assign(ov.style, {
+            position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 9999,
+        });
+
+        const mkCross = (x, y, color) => {
+            const s = `position:absolute;background:${color};pointer-events:none;`;
+            const h = document.createElement('div');
+            h.style.cssText = s + `left:${x-10}px;top:${y-1}px;width:20px;height:2px;`;
+            const v = document.createElement('div');
+            v.style.cssText = s + `left:${x-1}px;top:${y-10}px;width:2px;height:20px;`;
+            ov.appendChild(h); ov.appendChild(v);
+        };
+
+        // Rectangle englobant
+        const box = document.createElement('div');
+        Object.assign(box.style, {
+            position: 'absolute',
+            left: `${minX}px`, top: `${minY}px`,
+            width: `${maxX - minX}px`, height: `${maxY - minY}px`,
+            border: '1px dashed #fff8',
+            boxSizing: 'border-box',
+            pointerEvents: 'none',
+        });
+        ov.appendChild(box);
+
+        mkCross(tx, ty, '#00ff88');  // cible  — vert
+        mkCross(rx, ry, '#ff4444');  // atteint — rouge
+
+        // Label
+        const lbl = document.createElement('div');
+        Object.assign(lbl.style, {
+            position: 'absolute', left: `${minX}px`, top: `${minY - 18}px`,
+            color: '#fff', fontSize: '11px', fontFamily: 'monospace',
+            background: '#0008', padding: '1px 4px', borderRadius: '3px',
+            whiteSpace: 'nowrap',
+        });
+        lbl.textContent = `${frameId}  ●cible(${tcx.toFixed(2)},${tcy.toFixed(2)})  ●atteint(${rcx.toFixed(2)},${rcy.toFixed(2)})`;
+        ov.appendChild(lbl);
+
+        document.body.appendChild(ov);
+        setTimeout(() => ov.remove(), 4000);
     }
 
     onViewChange (cb) {
