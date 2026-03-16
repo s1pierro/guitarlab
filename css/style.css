@@ -1205,17 +1205,12 @@ div.statebar {
 .part-cell.active { background: #7c3aed; }
 .part-cell:hover:not(.active) { background: #ddd8f8; }
 
-/* ── curseur de durée ── */
-.part-length-bar {
-    display: flex;
-    align-items: center;
-    gap: 0.5em;
-    padding: 0.3em 0 0.1em;
-    font-size: 0.78em;
-    color: #888;
+/* colonnes hors-durée (après le premier délimitateur) */
+.part-col.out-of-range,
+.part-ctrack-cell.out-of-range,
+.part-ctrack-delim-cell.out-of-range {
+    opacity: 0.3;
 }
-.part-length-bar input[type=range] { flex: 1; font-family: inherit; }
-.part-length-label { white-space: nowrap; }
 
 /* ─── Paramètres ─────────────────────────────────────────────────────────── */
 .ux-panel-content:has(.settings-link) {

@@ -545,9 +545,9 @@ function _partNew () {
         name: 'Partition 1',
         bpm: 120,
         division: '16n',
-        length: 16,
+        length: 32,
         chords: [],
-        pattern: Array(6).fill(null).map(() => Array(16).fill(false))
+        pattern: Array(6).fill(null).map(() => Array(32).fill(false))
     };
 }
 function _partReviveChord (c) {
@@ -622,10 +622,14 @@ class PartitionManager {
         if (!p) return;
         const strings = this.getStrings();
         const secPerUnit = this._secPerUnit(p);
-        const totalSec   = p.length * secPerUnit;
+
+        // Le premier délimitateur de fin ({chord:null}) définit la durée de la séquence
+        const firstDelim = [...p.chords].sort((a, b) => a.at - b.at).find(c => c.chord === null);
+        const effectiveLen = firstDelim ? firstDelim.at : p.length;
+        const totalSec = effectiveLen * secPerUnit;
 
         // Un événement tick par unité — lecture live des données à chaque tick
-        const tickEvents = Array.from({ length: p.length }, (_, u) => [u * secPerUnit, u]);
+        const tickEvents = Array.from({ length: effectiveLen }, (_, u) => [u * secPerUnit, u]);
 
         this._seq = new Tone.Part((time, unit) => {
             const ap = this._active();
@@ -820,6 +824,9 @@ class PartitionManager {
         const delimRow  = document.createElement('div');
         delimRow.classList.add('part-ctrack-row', 'part-ctrack-delim-row');
 
+        // durée effective : premier délimitateur de fin, ou p.length par défaut
+        const firstDelimAt = [...p.chords].sort((a, b) => a.at - b.at).find(c => c.chord === null)?.at ?? p.length;
+
         for (let u = 0; u < p.length; u++) {
             const activeEntry = this._activeChordAt(p, u);
             const chordStart  = p.chords.find(c => c.at === u && c.chord !== null) || null;
@@ -828,9 +835,10 @@ class PartitionManager {
             // ── cellule accord ──
             const cCell = document.createElement('div');
             cCell.classList.add('part-ctrack-cell');
-            if (u % 4 === 0) cCell.classList.add('beat-start');
-            if (activeEntry)  cCell.classList.add('chord-active');
-            if (chordStart)   cCell.classList.add('chord-start');
+            if (u % 4 === 0)        cCell.classList.add('beat-start');
+            if (activeEntry)        cCell.classList.add('chord-active');
+            if (chordStart)         cCell.classList.add('chord-start');
+            if (u >= firstDelimAt)  cCell.classList.add('out-of-range');
 
             if (chordStart) {
                 // notation verticale + nom
@@ -866,7 +874,8 @@ class PartitionManager {
             // ── cellule délimiteur ──
             const dCell = document.createElement('div');
             dCell.classList.add('part-ctrack-delim-cell');
-            if (u % 4 === 0) dCell.classList.add('beat-start');
+            if (u % 4 === 0)        dCell.classList.add('beat-start');
+            if (u > firstDelimAt)   dCell.classList.add('out-of-range');
             if (delimHere) {
                 dCell.classList.add('delim-active');
                 dCell.textContent = '⊣';
@@ -899,6 +908,7 @@ class PartitionManager {
             const col = document.createElement('div');
             col.classList.add('part-col');
             if (u % 4 === 0) col.classList.add('beat-start');
+            if (u >= firstDelimAt) col.classList.add('out-of-range');
             this._colEls.push(col);
             for (let s = 0; s < 6; s++) {
                 const cell = document.createElement('div');
@@ -917,34 +927,6 @@ class PartitionManager {
             grid.appendChild(col);
         }
         editor.appendChild(grid);
-
-        // ── curseur de durée ──
-        const lengthBar = document.createElement('div');
-        lengthBar.classList.add('part-length-bar');
-        const lengthInput = document.createElement('input');
-        lengthInput.type  = 'range';
-        lengthInput.min   = '4';
-        lengthInput.max   = '64';
-        lengthInput.step  = '4';
-        lengthInput.value = String(p.length);
-        const lengthLabel = document.createElement('span');
-        lengthLabel.classList.add('part-length-label');
-        lengthLabel.textContent = `${p.length} unités`;
-        lengthInput.addEventListener('input', () => {
-            const newLen = parseInt(lengthInput.value);
-            lengthLabel.textContent = `${newLen} unités`;
-            for (let s = 0; s < 6; s++) {
-                if (!p.pattern[s]) p.pattern[s] = [];
-                while (p.pattern[s].length < newLen) p.pattern[s].push(false);
-                if (p.pattern[s].length > newLen) p.pattern[s].length = newLen;
-            }
-            p.chords = p.chords.filter(c => c.at < newLen);
-            p.length = newLen;
-            this.onStateChange();
-            if (this._playing) { this.stop(); this.play(); } else this._render();
-        });
-        lengthBar.append(lengthInput, lengthLabel);
-        editor.appendChild(lengthBar);
 
         root.appendChild(editor);
     }
@@ -2096,7 +2078,7 @@ class GroundRender {
             if (percentComplete < 100) {
                 elem.textContent = Math.round(percentComplete) + ' %';
             } else {
-                elem.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.3.1</span>';
+                elem.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.3.2</span>';
             }
         }
     }
@@ -2839,7 +2821,7 @@ class Application {
         document.body.appendChild (this.appbody);
         this.appstamp = document.createElement('div');
         this.appstamp.id = 'app-stamp';
-        this.appstamp.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.3.1</span>';
+        this.appstamp.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.3.2</span>';
         this.appbody.appendChild (this.appstamp);
 
         this.touchlayer = document.createElement('div');
