@@ -813,9 +813,10 @@ class PartitionManager {
         const editor = document.createElement('div');
         editor.classList.add('partition-editor');
 
-        // conteneur interne : min-width:max-content garantit l'alignement des trois rangées
+        // conteneur interne : largeur explicite = p.length × 1.4rem, alignement garanti
         const inner = document.createElement('div');
         inner.classList.add('part-editor-inner');
+        inner.style.width = `calc(${p.length} * 1.4rem)`;
 
         // ── piste accord — deux rangées par unité temporelle ──
         // Rangée 1 (accord)    : une cellule par unité, click = assigner/supprimer accord
@@ -2101,7 +2102,7 @@ class GroundRender {
             if (percentComplete < 100) {
                 elem.textContent = Math.round(percentComplete) + ' %';
             } else {
-                elem.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.3.6</span>';
+                elem.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.3.7</span>';
             }
         }
     }
@@ -2844,7 +2845,7 @@ class Application {
         document.body.appendChild (this.appbody);
         this.appstamp = document.createElement('div');
         this.appstamp.id = 'app-stamp';
-        this.appstamp.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.3.6</span>';
+        this.appstamp.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.3.7</span>';
         this.appbody.appendChild (this.appstamp);
 
         this.touchlayer = document.createElement('div');

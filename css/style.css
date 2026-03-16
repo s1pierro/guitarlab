@@ -1101,7 +1101,7 @@ div.statebar {
 .part-editor-inner {
     display: flex;
     flex-direction: column;
-    min-width: max-content;
+    /* width calculée en JS : p.length × 1.4rem */
 }
 
 /* ── piste accord — deux rangées ── */
