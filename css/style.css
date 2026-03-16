@@ -1099,28 +1099,39 @@ div.statebar {
     background: #fff;
 }
 
-/* ── piste accord sparse ── */
+/* ── piste accord — deux rangées ── */
 .part-chord-track {
     display: flex;
-    flex-direction: row;
-    min-height: 5.8em;
-    margin-bottom: 0.1em;
+    flex-direction: column;
     border-bottom: 1px solid #ddd;
 }
-.part-chord-block {
+.part-ctrack-row {
+    display: flex;
+    flex-direction: row;
+}
+
+/* rangée 1 — accords */
+.part-ctrack-chord-row { min-height: 5.5em; }
+.part-ctrack-cell {
+    flex: 1;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     gap: 0.1em;
-    padding: 0.2em 0.15em 0.15em;
-    background: #f0e8ff;
-    border-right: 1px solid #ddd;
+    padding: 0.15em 0.1em;
+    border-right: 1px solid #ececec;
+    cursor: pointer;
+    min-width: 0.85em;
     overflow: hidden;
     position: relative;
-    min-width: 0;
-    cursor: default;
+    background: #fafafa;
+    transition: background 0.08s;
 }
+.part-ctrack-cell.beat-start { border-left: 1px solid #b8b8b8; }
+.part-ctrack-cell.chord-active { background: rgba(124, 58, 237, 0.07); }
+.part-ctrack-cell.chord-start  { background: #f0e8ff; }
+.part-ctrack-cell:not(.chord-start):hover { background: #f3eeff; }
 .part-chord-vert {
     display: flex;
     flex-direction: column;
@@ -1128,7 +1139,7 @@ div.statebar {
     gap: 1px;
 }
 .part-chord-vert span {
-    font-size: 0.55em;
+    font-size: 0.52em;
     font-family: monospace;
     background: #ddd4f4;
     border-radius: 0.2em;
@@ -1139,7 +1150,7 @@ div.statebar {
     line-height: 1.2;
 }
 .part-chord-name-label {
-    font-size: 0.68em;
+    font-size: 0.62em;
     font-weight: bold;
     color: #5b21b6;
     white-space: nowrap;
@@ -1148,30 +1159,25 @@ div.statebar {
     max-width: 100%;
     text-align: center;
 }
-.part-chord-apply,
-.part-chord-del {
-    position: absolute;
-    font-size: 0.75em;
-    cursor: pointer;
-    opacity: 0.4;
-    top: 0.15em;
-}
-.part-chord-apply:hover,
-.part-chord-del:hover { opacity: 1; }
-.part-chord-apply { right: 1.1em; }
-.part-chord-del   { right: 0.15em; }
-.part-chord-empty {
+
+/* rangée 2 — délimiteurs de fin */
+.part-ctrack-delim-row { min-height: 1.4em; }
+.part-ctrack-delim-cell {
+    flex: 1;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: #fafafa;
-    border-right: 1px dashed #ddd;
+    border-right: 1px solid #ececec;
     cursor: pointer;
-    font-size: 1.1em;
-    opacity: 0.2;
-    min-width: 0;
+    min-width: 0.85em;
+    font-size: 0.7em;
+    color: #bbb;
+    background: #fafafa;
+    transition: background 0.08s, color 0.08s;
 }
-.part-chord-empty:hover { opacity: 0.65; background: #f3eeff; }
+.part-ctrack-delim-cell.beat-start { border-left: 1px solid #b8b8b8; }
+.part-ctrack-delim-cell.delim-active { color: #7c3aed; background: #ede9fe; }
+.part-ctrack-delim-cell:not(.delim-active):hover { background: #f3eeff; color: #9966cc; }
 
 /* ── grille picking — colonnes ── */
 .part-grid {

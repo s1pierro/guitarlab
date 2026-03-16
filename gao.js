@@ -809,67 +809,87 @@ class PartitionManager {
         const editor = document.createElement('div');
         editor.classList.add('partition-editor');
 
-        // ── piste accord sparse ──
+        // ── piste accord — deux rangées par unité temporelle ──
+        // Rangée 1 (accord)    : une cellule par unité, click = assigner/supprimer accord
+        // Rangée 2 (délimiteur): une cellule par unité, click = basculer délimiteur de fin
         const chordTrack = document.createElement('div');
         chordTrack.classList.add('part-chord-track');
 
-        // construire les blocs chord/empty alignés sur la grille
-        const sortedChords = [...p.chords].sort((a, b) => a.at - b.at);
-        const blocks = [];
-        let pos = 0;
-        for (let i = 0; i < sortedChords.length; i++) {
-            const c = sortedChords[i];
-            const nextAt = i + 1 < sortedChords.length ? sortedChords[i + 1].at : p.length;
-            if (c.at > pos) blocks.push({ type: 'empty', at: pos, span: c.at - pos });
-            blocks.push({ type: 'chord', at: c.at, span: nextAt - c.at, chord: c.chord });
-            pos = nextAt;
-        }
-        if (pos < p.length) blocks.push({ type: 'empty', at: pos, span: p.length - pos });
+        const chordRow  = document.createElement('div');
+        chordRow.classList.add('part-ctrack-row', 'part-ctrack-chord-row');
+        const delimRow  = document.createElement('div');
+        delimRow.classList.add('part-ctrack-row', 'part-ctrack-delim-row');
 
-        blocks.forEach(block => {
-            const blkEl = document.createElement('div');
-            blkEl.style.flex = String(block.span);
-            if (block.type === 'chord') {
-                blkEl.classList.add('part-chord-block');
-                // notation verticale : frets[0..5] empilées
+        for (let u = 0; u < p.length; u++) {
+            const activeEntry = this._activeChordAt(p, u);
+            const chordStart  = p.chords.find(c => c.at === u && c.chord !== null) || null;
+            const delimHere   = p.chords.find(c => c.at === u && c.chord === null)  || null;
+
+            // ── cellule accord ──
+            const cCell = document.createElement('div');
+            cCell.classList.add('part-ctrack-cell');
+            if (u % 4 === 0) cCell.classList.add('beat-start');
+            if (activeEntry)  cCell.classList.add('chord-active');
+            if (chordStart)   cCell.classList.add('chord-start');
+
+            if (chordStart) {
+                // notation verticale + nom
                 const vert = document.createElement('div');
                 vert.classList.add('part-chord-vert');
-                block.chord.frets.forEach(f => {
+                chordStart.chord.frets.forEach(f => {
                     const sp = document.createElement('span');
                     sp.textContent = f === 'x' ? '×' : String(f);
                     vert.appendChild(sp);
                 });
                 const nameEl = document.createElement('div');
                 nameEl.classList.add('part-chord-name-label');
-                nameEl.textContent = block.chord.name || '?';
-                const applyBtn = document.createElement('span');
-                applyBtn.classList.add('part-chord-apply');
-                applyBtn.textContent = '⏎';
-                applyBtn.title = 'Appliquer sur la guitare';
-                applyBtn.addEventListener('click', e => { e.stopPropagation(); this.applyChord(block.chord); });
-                const delBtn = document.createElement('span');
-                delBtn.classList.add('part-chord-del');
-                delBtn.textContent = '×';
-                delBtn.title = "Supprimer l'accord";
-                delBtn.addEventListener('click', e => {
-                    e.stopPropagation();
-                    p.chords = p.chords.filter(c => c.at !== block.at);
+                nameEl.textContent = chordStart.chord.name || '?';
+                cCell.append(vert, nameEl);
+                cCell.title = `${chordStart.chord.name} — cliquer pour supprimer`;
+                cCell.addEventListener('click', () => {
+                    p.chords = p.chords.filter(c => c.at !== u || c.chord === null);
                     this.onStateChange(); this._render();
                 });
-                blkEl.append(vert, nameEl, applyBtn, delBtn);
             } else {
-                blkEl.classList.add('part-chord-empty');
-                blkEl.textContent = '+';
-                blkEl.title = "Assigner l'accord actuel ici";
-                blkEl.addEventListener('click', () => {
+                cCell.title = "Assigner l'accord actuel ici";
+                cCell.addEventListener('click', () => {
                     const c = this.getCurrentChord();
                     if (!c) return;
-                    p.chords.push({ at: block.at, chord: c });
+                    // supprimer tout éventuel délimiteur sur cette unité
+                    p.chords = p.chords.filter(c2 => c2.at !== u);
+                    p.chords.push({ at: u, chord: c });
                     this.onStateChange(); this._render();
                 });
             }
-            chordTrack.appendChild(blkEl);
-        });
+            chordRow.appendChild(cCell);
+
+            // ── cellule délimiteur ──
+            const dCell = document.createElement('div');
+            dCell.classList.add('part-ctrack-delim-cell');
+            if (u % 4 === 0) dCell.classList.add('beat-start');
+            if (delimHere) {
+                dCell.classList.add('delim-active');
+                dCell.textContent = '⊣';
+                dCell.title = 'Supprimer le délimiteur de fin';
+                dCell.addEventListener('click', () => {
+                    p.chords = p.chords.filter(c => !(c.at === u && c.chord === null));
+                    this.onStateChange(); this._render();
+                });
+            } else {
+                dCell.title = 'Ajouter un délimiteur de fin ici';
+                dCell.addEventListener('click', () => {
+                    // n'a de sens que s'il y a un accord actif avant cette unité
+                    if (!activeEntry) return;
+                    // supprimer tout accord qui démarrerait exactement ici
+                    p.chords = p.chords.filter(c => c.at !== u);
+                    p.chords.push({ at: u, chord: null });
+                    this.onStateChange(); this._render();
+                });
+            }
+            delimRow.appendChild(dCell);
+        }
+
+        chordTrack.append(chordRow, delimRow);
         editor.appendChild(chordTrack);
 
         // ── grille de picking — columns ──
@@ -2076,7 +2096,7 @@ class GroundRender {
             if (percentComplete < 100) {
                 elem.textContent = Math.round(percentComplete) + ' %';
             } else {
-                elem.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.3.0</span>';
+                elem.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.3.1</span>';
             }
         }
     }
@@ -2819,7 +2839,7 @@ class Application {
         document.body.appendChild (this.appbody);
         this.appstamp = document.createElement('div');
         this.appstamp.id = 'app-stamp';
-        this.appstamp.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.3.0</span>';
+        this.appstamp.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.3.1</span>';
         this.appbody.appendChild (this.appstamp);
 
         this.touchlayer = document.createElement('div');
