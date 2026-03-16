@@ -1194,9 +1194,9 @@ div.statebar {
     background: #00000030;
     height: 10px;
 }
-.en-grad-bound  { height: 10px; background: #00000030; }
-.en-grad-zone   { height: 10px; background: #27ae6055; }
-.en-grad-center { height: 16px; top: -6px; width: 2px; background: #00000055; }
+.en-grad-bound  { height: 10px; background: #00000055; }
+.en-grad-zone   { height: 10px; background: #27ae6099; }
+.en-grad-center { height: 16px; top: -6px; width: 2px; background: #000000aa; }
 #ecoute-needle-cursor {
     position: absolute;
     top: -4px;
