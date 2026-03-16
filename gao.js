@@ -1567,44 +1567,41 @@ class Cameraman {
         this._flyRaf = requestAnimationFrame(tick);
     }
 
-    // Corrige le pan caméra pour que frame.target atterrisse à frame.screen (cx,cy).
-    // Projection 3D→NDC, mesure de l'erreur, pan dans l'espace monde, itération.
-    // tolerance en NDC (0..2), maxIter évite toute boucle infinie.
-    _autoAlign (frame, tolerance = 0.02, maxIter = 8) {
+    // Décale la caméra (pan pur) pour que frame.target atterrisse à frame.screen (cx,cy).
+    // Après flyTo, frame.target est exactement au centre de la vue (NDC 0,0) — on calcule
+    // le pan analytiquement en une seule passe, sans itération ni re-projection.
+    _autoAlign (frame) {
         if (!frame.screen) return;
         const { cx = 0.5, cy = 0.5 } = frame.screen;
-        // cible en NDC : cx/cy normalisés 0..1 → NDC x/y dans [-1,+1], Y écran inversé vs NDC
-        const tNdcX = cx * 2 - 1;
-        const tNdcY = -(cy * 2 - 1);
-        // point 3D ancre = target du cadrage (fixe dans l'espace monde)
-        const anchor  = new THREE.Vector3(frame.target.x, frame.target.y, frame.target.z);
+        // Déplacement NDC souhaité depuis le centre (0,0) vers la cible (tNdcX, tNdcY)
+        // Y écran vs NDC : cy=0 = haut écran = NDC +1 → tNdcY = -(cy*2-1)
+        const tNdcX = cx * 2 - 1;   // ex. cx=0.165 → -0.67
+        const tNdcY = -(cy * 2 - 1); // cy=0.5 → 0
+
+        this.camera.updateMatrixWorld();
+
         const viewDir = new THREE.Vector3();
-        const right   = new THREE.Vector3();
+        this.camera.getWorldDirection(viewDir);
 
-        for (let i = 0; i < maxIter; i++) {
-            // Forcer la mise à jour des matrices avant la projection
-            this.camera.updateMatrixWorld();
-            const ndc  = anchor.clone().project(this.camera);
-            const errX = ndc.x - tNdcX;
-            const errY = ndc.y - tNdcY;
-            if (Math.abs(errX) < tolerance && Math.abs(errY) < tolerance) break;
+        // Profondeur de frame.target sur l'axe de vue
+        const anchor = new THREE.Vector3(frame.target.x, frame.target.y, frame.target.z);
+        const depth  = anchor.clone().sub(this.camera.position).dot(viewDir);
 
-            // Profondeur de l'ancre sur l'axe de vue (plus précis que dist au target)
-            this.camera.getWorldDirection(viewDir);
-            const depth = anchor.clone().sub(this.camera.position).dot(viewDir);
-            const halfH = Math.tan(this.camera.fov * Math.PI / 360) * Math.max(depth, 0.01);
-            const halfW = halfH * this.camera.aspect;
+        // Emprise monde à cette profondeur (demi-hauteur / demi-largeur)
+        const halfH = Math.tan(this.camera.fov * Math.PI / 360) * Math.max(depth, 0.01);
+        const halfW = halfH * this.camera.aspect;
 
-            right.crossVectors(viewDir, this.camera.up).normalize();
+        // Vecteur right de la caméra
+        const right = new THREE.Vector3().crossVectors(viewDir, this.camera.up).normalize();
 
-            // errX > 0 → ancre trop à droite → pan droite → ancre se déplace à gauche
-            const pan = right.clone().multiplyScalar(errX * halfW)
-                .addScaledVector(this.camera.up, errY * halfH);
+        // Pan = déplacer caméra + target du même vecteur
+        // tNdcX < 0 (gauche) → right * (-tNdcX) * halfW → caméra part à droite → scène à gauche
+        const pan = right.clone().multiplyScalar(-tNdcX * halfW)
+            .addScaledVector(this.camera.up, tNdcY * halfH);
 
-            this.camera.position.add(pan);
-            this.controls.target.add(pan);
-            this.controls.update();
-        }
+        this.camera.position.add(pan);
+        this.controls.target.add(pan);
+        this.controls.update();
         this.onNeedRender();
     }
 
