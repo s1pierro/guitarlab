@@ -536,25 +536,46 @@ class PluckPad {
     }
 }
 // ─────────────────────────────────────────────────────────────────────────────
-//  PartitionManager  — séquenceur multi-partitions (piste accord + picking)
+//  PartitionManager  — séquenceur deux mains (piste accord sparse + grille picking)
 // ─────────────────────────────────────────────────────────────────────────────
 
-function _partNewSlot () {
-    return { chord: null, pattern: Array(6).fill(null).map(() => Array(16).fill(false)) };
-}
-function _partNewItem () {
-    return { id: 'p' + Date.now().toString(36), name: 'Partition 1', bpm: 240, slots: [_partNewSlot()] };
+function _partNew () {
+    return {
+        id: 'p' + Date.now().toString(36),
+        name: 'Partition 1',
+        bpm: 120,
+        division: '16n',
+        length: 16,
+        chords: [],
+        pattern: Array(6).fill(null).map(() => Array(16).fill(false))
+    };
 }
 function _partReviveChord (c) {
     return c instanceof Chord
         ? c
         : new Chord(c.frets, c.name, c.root, c.type, c.desc, c.bass, c.notes, c.intervals);
 }
+function _partMigrateItem (item) {
+    if (!item.slots) return item; // already new format
+    const length = item.slots.length * 16;
+    const pattern = Array(6).fill(null).map((_, s) =>
+        Array.from({ length }, (_, u) => !!(item.slots[Math.floor(u / 16)]?.pattern[s]?.[u % 16]))
+    );
+    const chords = [];
+    item.slots.forEach((slot, si) => {
+        if (slot.chord) {
+            const at = si * 16;
+            if (!chords.length || chords[chords.length - 1].at !== at)
+                chords.push({ at, chord: _partReviveChord(slot.chord) });
+        }
+    });
+    return { id: item.id, name: item.name, bpm: item.bpm, division: '16n', length, chords, pattern };
+}
 
 class PartitionManager {
     constructor (getStrings) {
         this.getStrings    = getStrings;   // () => ComputedString[]
-        this.items         = [_partNewItem()];
+        this.items         = [_partNew()];
         this.activeId      = this.items[0].id;
         this._seq          = null;
         this._playing      = false;
@@ -562,6 +583,8 @@ class PartitionManager {
         this.onStateChange = () => {};
         this._domdest      = null;
         this._playBtn      = null;
+        this._colEls       = [];
+        this._prevPH       = -1;
         // injectés par Application
         this.applyChord      = () => {};
         this.getCurrentChord = () => null;
@@ -570,15 +593,27 @@ class PartitionManager {
     // ── persistence ──────────────────────────────────────────────────────────
     get data () { return { items: this.items, activeId: this.activeId }; }
     set data (d) {
-        this.items = (d.items || []).map(p => ({
-            ...p,
-            slots: (p.slots || []).map(s => ({ ...s, chord: s.chord ? _partReviveChord(s.chord) : null }))
-        }));
+        this.items = (d.items || []).map(item => {
+            const m = _partMigrateItem(item);
+            m.chords = (m.chords || []).map(c => ({ ...c, chord: _partReviveChord(c.chord) }));
+            return m;
+        });
         this.activeId = d.activeId || (this.items[0] && this.items[0].id) || null;
         if (this._domdest) this._render();
     }
 
     _active () { return this.items.find(p => p.id === this.activeId) || null; }
+
+    // ── utils ─────────────────────────────────────────────────────────────────
+    _secPerUnit (p) {
+        const divs = { '8n': 2, '16n': 4, '32n': 8 };
+        return 60 / p.bpm / (divs[p.division] || 4);
+    }
+    _activeChordAt (p, unit) {
+        let result = null;
+        for (const c of p.chords) { if (c.at <= unit) result = c; }
+        return result;
+    }
 
     // ── lecture ──────────────────────────────────────────────────────────────
     play () {
@@ -586,35 +621,40 @@ class PartitionManager {
         const p = this._active();
         if (!p) return;
         const strings = this.getStrings();
-        const totalUnits = p.slots.length * 16;
+        const secPerUnit = this._secPerUnit(p);
+        const totalSec   = p.length * secPerUnit;
 
-        // Secondes par croche calculées directement depuis p.bpm
-        // → aucune dépendance envers le parseur Tone.Time ni Transport.bpm
-        const secPer16n = 60 / p.bpm / 4;
+        // Un événement tick par unité — lecture live des données à chaque tick
+        const tickEvents = Array.from({ length: p.length }, (_, u) => [u * secPerUnit, u]);
 
-        const partEvents = [];
-        for (let unit = 0; unit < totalUnits; unit++) {
-            const slot = p.slots[Math.floor(unit / 16)];
-            if (!slot || !slot.chord) continue;
-            const localUnit = unit % 16;
-            for (let s = 0; s < strings.length; s++) {
-                if (!slot.pattern[s]?.[localUnit]) continue;
-                const fret = slot.chord.frets[s];
-                if (fret === 'x') continue;
-                const openIdx = allnotes.indexOf(strings[s].name);
-                if (openIdx === -1) continue;
-                const note = allnotes[openIdx + parseInt(fret)];
-                if (note) partEvents.push([unit * secPer16n, { note, synth: strings[s].synth }]);
+        this._seq = new Tone.Part((time, unit) => {
+            const ap = this._active();
+            if (!ap) return;
+            const chordEntry = this._activeChordAt(ap, unit);
+
+            // changement d'accord → mise à jour guitare virtuelle
+            if (chordEntry && chordEntry.at === unit)
+                setTimeout(() => this.applyChord(chordEntry.chord), 0);
+
+            // notes de picking
+            if (chordEntry) {
+                for (let s = 0; s < strings.length; s++) {
+                    if (!ap.pattern[s]?.[unit]) continue;
+                    const fret = chordEntry.chord.frets[s];
+                    if (fret === 'x') continue;
+                    const openIdx = allnotes.indexOf(strings[s].name);
+                    if (openIdx === -1) continue;
+                    const note = allnotes[openIdx + parseInt(fret)];
+                    if (note) strings[s].synth.triggerAttackRelease(note, Math.max(secPerUnit * 0.85, 0.05), time);
+                }
             }
-        }
 
-        if (partEvents.length === 0) return;
+            // curseur de lecture
+            setTimeout(() => this._updatePlayhead(unit), 0);
+        }, tickEvents);
 
-        this._seq = new Tone.Part((time, val) => {
-            val.synth.triggerAttack(val.note, time);
-        }, partEvents);
-        this._seq.loop = this._looping;
-        this._seq.loopEnd = totalUnits * secPer16n;
+        this._seq.loop    = this._looping;
+        this._seq.loopEnd = totalSec;
         this._seq.start(0);
         Tone.Transport.start();
         this._playing = true;
@@ -625,11 +665,20 @@ class PartitionManager {
         if (this._seq) { this._seq.stop(); this._seq.dispose(); this._seq = null; }
         Tone.Transport.stop();
         this._playing = false;
+        this._updatePlayhead(-1);
         this._updatePlayBtn();
     }
 
     _updatePlayBtn () {
         if (this._playBtn) this._playBtn.textContent = this._playing ? '■' : '▶';
+    }
+
+    _updatePlayhead (unit) {
+        if (this._prevPH >= 0 && this._colEls[this._prevPH])
+            this._colEls[this._prevPH].classList.remove('playhead');
+        if (unit >= 0 && this._colEls[unit])
+            this._colEls[unit].classList.add('playhead');
+        this._prevPH = unit;
     }
 
     // ── DOM ───────────────────────────────────────────────────────────────────
@@ -641,6 +690,7 @@ class PartitionManager {
     _render () {
         const root = this._domdest;
         if (!root) return;
+        this._colEls = [];
         root.innerHTML = '';
 
         // ── onglets partitions ──
@@ -677,7 +727,7 @@ class PartitionManager {
         addTab.classList.add('partition-tab', 'partition-tab-add');
         addTab.textContent = '+';
         addTab.addEventListener('click', () => {
-            const np = _partNewItem(); this.items.push(np); this.activeId = np.id;
+            const np = _partNew(); this.items.push(np); this.activeId = np.id;
             this.onStateChange(); this._render();
         });
         tabs.appendChild(addTab);
@@ -686,7 +736,7 @@ class PartitionManager {
         const p = this._active();
         if (!p) return;
 
-        // ── contrôles BPM + lecture ──
+        // ── contrôles BPM + lecture + division ──
         const controls = document.createElement('div');
         controls.classList.add('partition-controls');
 
@@ -706,22 +756,18 @@ class PartitionManager {
         bpmUp.textContent = '+';
 
         const applyBpm = (v) => {
-            v = Math.max(40, Math.min(240, v));
+            v = Math.max(40, Math.min(300, v));
             p.bpm = v;
             bpmDisplay.textContent = v;
             this.onStateChange();
-            if (this._playing) { this.stop(); this.play(); } else { Tone.Transport.bpm.value = v; }
+            if (this._playing) { this.stop(); this.play(); }
         };
-
         bpmDown.addEventListener('click', () => applyBpm(p.bpm - 5));
         bpmUp.addEventListener('click',   () => applyBpm(p.bpm + 5));
-
-        // tap sur le display : saisie directe
         bpmDisplay.addEventListener('click', () => {
-            const v = parseInt(prompt('BPM (40–240)', p.bpm));
+            const v = parseInt(prompt('BPM (40–300)', p.bpm));
             if (!isNaN(v)) applyBpm(v);
         });
-
         bpmWrap.append(bpmDown, bpmDisplay, bpmUp);
 
         this._playBtn = document.createElement('button');
@@ -740,93 +786,147 @@ class PartitionManager {
             if (this._seq) this._seq.loop = this._looping;
         });
 
-        controls.append(bpmWrap, this._playBtn, loopBtn);
-        root.appendChild(controls);
-
-        // ── timeline (mesures) ──
-        const timeline = document.createElement('div');
-        timeline.classList.add('partition-timeline');
-
-        p.slots.forEach((slot, slotIdx) => {
-            const slotEl = document.createElement('div');
-            slotEl.classList.add('partition-slot');
-
-            // piste accord
-            const chordHeader = document.createElement('div');
-            chordHeader.classList.add('partition-chord-header');
-            if (slot.chord) {
-                const fretsEl = document.createElement('div');
-                fretsEl.classList.add('partition-chord-frets');
-                slot.chord.frets.forEach(f => {
-                    const s = document.createElement('span');
-                    s.textContent = f === 'x' ? '×' : f;
-                    fretsEl.appendChild(s);
-                });
-                const nameEl2 = document.createElement('div');
-                nameEl2.classList.add('partition-chord-name');
-                nameEl2.textContent = slot.chord.name || '?';
-
-                const applyBtn = document.createElement('span');
-                applyBtn.classList.add('partition-chord-apply');
-                applyBtn.textContent = '⏎';
-                applyBtn.title = 'Appliquer sur la guitare';
-                applyBtn.addEventListener('click', e => { e.stopPropagation(); this.applyChord(slot.chord); });
-
-                const delBtn = document.createElement('span');
-                delBtn.classList.add('partition-chord-del');
-                delBtn.textContent = '×';
-                delBtn.addEventListener('click', e => {
-                    e.stopPropagation(); slot.chord = null; this.onStateChange(); this._render();
-                });
-                chordHeader.append(fretsEl, nameEl2, applyBtn, delBtn);
-            } else {
-                const assignBtn = document.createElement('div');
-                assignBtn.classList.add('partition-assign-btn');
-                assignBtn.innerHTML = '<i class="icon-attach-2"></i>';
-                assignBtn.title = "Assigner l'accord actuel";
-                assignBtn.addEventListener('click', () => {
-                    const c = this.getCurrentChord();
-                    if (c) { slot.chord = c; this.onStateChange(); this._render(); }
-                });
-                chordHeader.appendChild(assignBtn);
-            }
-
-            // grille de picking 6 × 16
-            const grid = document.createElement('div');
-            grid.classList.add('partition-grid');
-            for (let s = 0; s < 6; s++) {
-                const row = document.createElement('div');
-                row.classList.add('partition-grid-row');
-                for (let u = 0; u < 16; u++) {
-                    const cell = document.createElement('div');
-                    cell.classList.add('partition-cell');
-                    if (u % 4 === 0) cell.classList.add('beat-start');
-                    if (slot.pattern[s]?.[u]) cell.classList.add('active');
-                    cell.addEventListener('pointerdown', e => {
-                        e.preventDefault();
-                        if (!slot.pattern[s]) slot.pattern[s] = Array(16).fill(false);
-                        slot.pattern[s][u] = !slot.pattern[s][u];
-                        cell.classList.toggle('active', slot.pattern[s][u]);
-                        this.onStateChange();
-                        if (this._playing) { this.stop(); this.play(); }
-                    });
-                    row.appendChild(cell);
-                }
-                grid.appendChild(row);
-            }
-
-            slotEl.append(chordHeader, grid);
-            timeline.appendChild(slotEl);
+        // sélecteur de division rythmique
+        const divWrap = document.createElement('div');
+        divWrap.classList.add('part-div-wrap');
+        ['8n', '16n', '32n'].forEach(div => {
+            const btn = document.createElement('button');
+            btn.classList.add('part-div-btn');
+            btn.textContent = div === '8n' ? '÷8' : div === '16n' ? '÷16' : '÷32';
+            btn.classList.toggle('active', p.division === div);
+            btn.addEventListener('click', () => {
+                p.division = div;
+                this.onStateChange();
+                if (this._playing) { this.stop(); this.play(); } else this._render();
+            });
+            divWrap.appendChild(btn);
         });
 
-        // bouton ajout de mesure
-        const addSlot = document.createElement('div');
-        addSlot.classList.add('partition-slot-add');
-        addSlot.textContent = '+';
-        addSlot.title = 'Ajouter une mesure';
-        addSlot.addEventListener('click', () => { p.slots.push(_partNewSlot()); this.onStateChange(); this._render(); });
-        timeline.appendChild(addSlot);
-        root.appendChild(timeline);
+        controls.append(bpmWrap, this._playBtn, loopBtn, divWrap);
+        root.appendChild(controls);
+
+        // ── éditeur (piste accord + grille picking) ──
+        const editor = document.createElement('div');
+        editor.classList.add('partition-editor');
+
+        // ── piste accord sparse ──
+        const chordTrack = document.createElement('div');
+        chordTrack.classList.add('part-chord-track');
+
+        // construire les blocs chord/empty alignés sur la grille
+        const sortedChords = [...p.chords].sort((a, b) => a.at - b.at);
+        const blocks = [];
+        let pos = 0;
+        for (let i = 0; i < sortedChords.length; i++) {
+            const c = sortedChords[i];
+            const nextAt = i + 1 < sortedChords.length ? sortedChords[i + 1].at : p.length;
+            if (c.at > pos) blocks.push({ type: 'empty', at: pos, span: c.at - pos });
+            blocks.push({ type: 'chord', at: c.at, span: nextAt - c.at, chord: c.chord });
+            pos = nextAt;
+        }
+        if (pos < p.length) blocks.push({ type: 'empty', at: pos, span: p.length - pos });
+
+        blocks.forEach(block => {
+            const blkEl = document.createElement('div');
+            blkEl.style.flex = String(block.span);
+            if (block.type === 'chord') {
+                blkEl.classList.add('part-chord-block');
+                // notation verticale : frets[0..5] empilées
+                const vert = document.createElement('div');
+                vert.classList.add('part-chord-vert');
+                block.chord.frets.forEach(f => {
+                    const sp = document.createElement('span');
+                    sp.textContent = f === 'x' ? '×' : String(f);
+                    vert.appendChild(sp);
+                });
+                const nameEl = document.createElement('div');
+                nameEl.classList.add('part-chord-name-label');
+                nameEl.textContent = block.chord.name || '?';
+                const applyBtn = document.createElement('span');
+                applyBtn.classList.add('part-chord-apply');
+                applyBtn.textContent = '⏎';
+                applyBtn.title = 'Appliquer sur la guitare';
+                applyBtn.addEventListener('click', e => { e.stopPropagation(); this.applyChord(block.chord); });
+                const delBtn = document.createElement('span');
+                delBtn.classList.add('part-chord-del');
+                delBtn.textContent = '×';
+                delBtn.title = "Supprimer l'accord";
+                delBtn.addEventListener('click', e => {
+                    e.stopPropagation();
+                    p.chords = p.chords.filter(c => c.at !== block.at);
+                    this.onStateChange(); this._render();
+                });
+                blkEl.append(vert, nameEl, applyBtn, delBtn);
+            } else {
+                blkEl.classList.add('part-chord-empty');
+                blkEl.textContent = '+';
+                blkEl.title = "Assigner l'accord actuel ici";
+                blkEl.addEventListener('click', () => {
+                    const c = this.getCurrentChord();
+                    if (!c) return;
+                    p.chords.push({ at: block.at, chord: c });
+                    this.onStateChange(); this._render();
+                });
+            }
+            chordTrack.appendChild(blkEl);
+        });
+        editor.appendChild(chordTrack);
+
+        // ── grille de picking — columns ──
+        const grid = document.createElement('div');
+        grid.classList.add('part-grid');
+        for (let u = 0; u < p.length; u++) {
+            const col = document.createElement('div');
+            col.classList.add('part-col');
+            if (u % 4 === 0) col.classList.add('beat-start');
+            this._colEls.push(col);
+            for (let s = 0; s < 6; s++) {
+                const cell = document.createElement('div');
+                cell.classList.add('part-cell');
+                if (p.pattern[s]?.[u]) cell.classList.add('active');
+                cell.addEventListener('pointerdown', e => {
+                    e.preventDefault();
+                    if (!p.pattern[s]) p.pattern[s] = Array(p.length).fill(false);
+                    p.pattern[s][u] = !p.pattern[s][u];
+                    cell.classList.toggle('active', p.pattern[s][u]);
+                    this.onStateChange();
+                    // pas de restart pendant la lecture — le tick suivant lira la nouvelle valeur
+                });
+                col.appendChild(cell);
+            }
+            grid.appendChild(col);
+        }
+        editor.appendChild(grid);
+
+        // ── curseur de durée ──
+        const lengthBar = document.createElement('div');
+        lengthBar.classList.add('part-length-bar');
+        const lengthInput = document.createElement('input');
+        lengthInput.type  = 'range';
+        lengthInput.min   = '4';
+        lengthInput.max   = '64';
+        lengthInput.step  = '4';
+        lengthInput.value = String(p.length);
+        const lengthLabel = document.createElement('span');
+        lengthLabel.classList.add('part-length-label');
+        lengthLabel.textContent = `${p.length} unités`;
+        lengthInput.addEventListener('input', () => {
+            const newLen = parseInt(lengthInput.value);
+            lengthLabel.textContent = `${newLen} unités`;
+            for (let s = 0; s < 6; s++) {
+                if (!p.pattern[s]) p.pattern[s] = [];
+                while (p.pattern[s].length < newLen) p.pattern[s].push(false);
+                if (p.pattern[s].length > newLen) p.pattern[s].length = newLen;
+            }
+            p.chords = p.chords.filter(c => c.at < newLen);
+            p.length = newLen;
+            this.onStateChange();
+            if (this._playing) { this.stop(); this.play(); } else this._render();
+        });
+        lengthBar.append(lengthInput, lengthLabel);
+        editor.appendChild(lengthBar);
+
+        root.appendChild(editor);
     }
 }
 
@@ -1976,7 +2076,7 @@ class GroundRender {
             if (percentComplete < 100) {
                 elem.textContent = Math.round(percentComplete) + ' %';
             } else {
-                elem.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.2.2</span>';
+                elem.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.3.0</span>';
             }
         }
     }
@@ -2719,7 +2819,7 @@ class Application {
         document.body.appendChild (this.appbody);
         this.appstamp = document.createElement('div');
         this.appstamp.id = 'app-stamp';
-        this.appstamp.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.2.2</span>';
+        this.appstamp.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.3.0</span>';
         this.appbody.appendChild (this.appstamp);
 
         this.touchlayer = document.createElement('div');
@@ -2916,6 +3016,7 @@ class Application {
         this.partitions.applyChord = (chord) => {
             for (let i = 0; i < chord.frets.length; i++)
                 this.computedguitar.strings[i].forcehold(chord.frets[i]);
+            onStateChange();
             this.groundrender.render();
         };
         this.partitions.getCurrentChord = () => {

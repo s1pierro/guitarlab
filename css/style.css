@@ -986,6 +986,8 @@ div.statebar {
 #partitions-content {
     background: #f8f8f8;
 }
+
+/* ── onglets ── */
 .partition-tabs {
     display: flex;
     flex-wrap: wrap;
@@ -1016,6 +1018,7 @@ div.statebar {
 .partition-tab-add  { background: transparent; opacity: 0.5; font-size: 1.05em; padding: 0.1em 0.5em; }
 .partition-tab-add:hover { opacity: 1; }
 
+/* ── contrôles ── */
 .partition-controls {
     display: flex;
     align-items: center;
@@ -1027,7 +1030,6 @@ div.statebar {
 .partition-bpm-wrap {
     display: flex;
     align-items: center;
-    gap: 0;
     border: 1px solid #ccc;
     border-radius: 0.4em;
     overflow: hidden;
@@ -1039,6 +1041,7 @@ div.statebar {
     padding: 0.15em 0.55em;
     cursor: pointer;
     line-height: 1;
+    font-family: inherit;
 }
 .partition-bpm-btn:hover { background: #d0d0d0; }
 .partition-bpm-display {
@@ -1061,111 +1064,152 @@ div.statebar {
     font-size: 1em;
     padding: 0.2em 0.55em;
     line-height: 1;
+    font-family: inherit;
 }
 .partition-play-btn:hover,
 .partition-loop-btn:hover  { background: #ddd; }
 .partition-loop-btn.active { background: #ede9fe; color: #7c3aed; border-color: #c4b5fd; }
 
-.partition-timeline {
+/* ── sélecteur de division ── */
+.part-div-wrap {
     display: flex;
-    flex-direction: row;
+    border: 1px solid #ccc;
+    border-radius: 0.4em;
+    overflow: hidden;
+    margin-left: auto;
+}
+.part-div-btn {
+    border: none;
+    border-left: 1px solid #ccc;
+    background: #eee;
+    font-size: 0.75em;
+    padding: 0.2em 0.5em;
+    cursor: pointer;
+    font-family: inherit;
+    line-height: 1;
+}
+.part-div-btn:first-child { border-left: none; }
+.part-div-btn:hover  { background: #ddd; }
+.part-div-btn.active { background: #ede9fe; color: #7c3aed; }
+
+/* ── éditeur (scrollable) ── */
+.partition-editor {
     overflow-x: auto;
-    gap: 0;
     padding: 0.4em 0.5em 0.5em;
     background: #fff;
-    align-items: stretch;
 }
-.partition-slot {
+
+/* ── piste accord sparse ── */
+.part-chord-track {
     display: flex;
-    flex-direction: column;
-    border: 1px solid #ddd;
-    border-radius: 0.25em;
-    margin-right: 0.35em;
-    min-width: 9em;
-    flex-shrink: 0;
-    overflow: hidden;
+    flex-direction: row;
+    min-height: 5.8em;
+    margin-bottom: 0.1em;
+    border-bottom: 1px solid #ddd;
 }
-.partition-chord-header {
-    background: #f0e8ff;
-    min-height: 3.2em;
+.part-chord-block {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 0.15em;
-    padding: 0.4em 1.4em 0.3em 0.4em;
-    border-bottom: 1px solid #ddd;
+    gap: 0.1em;
+    padding: 0.2em 0.15em 0.15em;
+    background: #f0e8ff;
+    border-right: 1px solid #ddd;
+    overflow: hidden;
     position: relative;
+    min-width: 0;
     cursor: default;
 }
-.partition-chord-frets {
+.part-chord-vert {
     display: flex;
-    gap: 0.12em;
+    flex-direction: column;
+    align-items: center;
+    gap: 1px;
 }
-.partition-chord-frets span {
+.part-chord-vert span {
+    font-size: 0.55em;
+    font-family: monospace;
     background: #ddd4f4;
     border-radius: 0.2em;
-    padding: 0.05em 0.18em;
-    font-size: 0.62em;
-    font-family: monospace;
+    padding: 0.05em 0.15em;
     min-width: 1.1em;
     text-align: center;
     color: #333;
+    line-height: 1.2;
 }
-.partition-chord-name {
-    font-size: 0.78em;
+.part-chord-name-label {
+    font-size: 0.68em;
     font-weight: bold;
     color: #5b21b6;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    text-align: center;
 }
-.partition-chord-apply,
-.partition-chord-del {
+.part-chord-apply,
+.part-chord-del {
     position: absolute;
-    font-size: 0.8em;
+    font-size: 0.75em;
     cursor: pointer;
-    opacity: 0.45;
-    top: 0.2em;
+    opacity: 0.4;
+    top: 0.15em;
 }
-.partition-chord-apply:hover,
-.partition-chord-del:hover { opacity: 1; }
-.partition-chord-apply { right: 1.3em; }
-.partition-chord-del   { right: 0.3em; }
-
-.partition-assign-btn {
-    font-size: 1.3em;
-    opacity: 0.3;
+.part-chord-apply:hover,
+.part-chord-del:hover { opacity: 1; }
+.part-chord-apply { right: 1.1em; }
+.part-chord-del   { right: 0.15em; }
+.part-chord-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #fafafa;
+    border-right: 1px dashed #ddd;
     cursor: pointer;
-    padding: 0.35em;
+    font-size: 1.1em;
+    opacity: 0.2;
+    min-width: 0;
 }
-.partition-assign-btn:hover { opacity: 0.85; }
+.part-chord-empty:hover { opacity: 0.65; background: #f3eeff; }
 
-.partition-grid      { display: flex; flex-direction: column; flex: 1; }
-.partition-grid-row  { display: flex; flex: 1; min-height: 1.15em; }
-.partition-cell {
+/* ── grille picking — colonnes ── */
+.part-grid {
+    display: flex;
+    flex-direction: row;
+}
+.part-col {
+    display: flex;
+    flex-direction: column;
     flex: 1;
     border-right: 1px solid #ececec;
-    border-bottom: 1px solid #ececec;
     cursor: pointer;
+    min-width: 0.85em;
+}
+.part-col.beat-start { border-left: 1px solid #b8b8b8; }
+.part-col.playhead   { background: rgba(124, 58, 237, 0.08); }
+.part-cell {
+    flex: 1;
+    min-height: 1.1em;
+    border-bottom: 1px solid #ececec;
     background: #fafafa;
     transition: background 0.08s;
     touch-action: none;
 }
-.partition-cell.beat-start { border-left: 1px solid #b8b8b8; }
-.partition-cell.active     { background: #7c3aed; }
-.partition-cell:hover:not(.active) { background: #ddd8f8; }
+.part-cell.active { background: #7c3aed; }
+.part-cell:hover:not(.active) { background: #ddd8f8; }
 
-.partition-slot-add {
+/* ── curseur de durée ── */
+.part-length-bar {
     display: flex;
     align-items: center;
-    justify-content: center;
-    min-width: 2.2em;
-    cursor: pointer;
-    font-size: 1.5em;
-    opacity: 0.35;
-    flex-shrink: 0;
-    padding: 0 0.4em;
-    align-self: center;
+    gap: 0.5em;
+    padding: 0.3em 0 0.1em;
+    font-size: 0.78em;
+    color: #888;
 }
-.partition-slot-add:hover { opacity: 0.85; }
+.part-length-bar input[type=range] { flex: 1; font-family: inherit; }
+.part-length-label { white-space: nowrap; }
 
 /* ─── Paramètres ─────────────────────────────────────────────────────────── */
 .ux-panel-content:has(.settings-link) {
