@@ -987,36 +987,49 @@ div.statebar {
     background: #f8f8f8;
 }
 
-/* ── onglets ── */
-.partition-tabs {
+/* ── pills partitions ── */
+.part-pill-row {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.15em;
-    padding: 0.35em 0.5em 0;
-    background: #efefef;
-    border-bottom: 1px solid #ddd;
+    gap: 0.35em;
+    padding: 0.4em 0.5em 0.3em;
 }
-.partition-tab {
+.part-pill {
+    padding: 0.25em 0.65em;
+    background: #000000cc;
+    border: none;
+    border-radius: 1em;
+    font-family: inherit;
+    font-size: 0.82em;
+    font-weight: bold;
+    color: #fff;
+    cursor: pointer;
+    opacity: 0.45;
+    transition: opacity 0.15s;
+}
+.part-pill:hover  { opacity: 0.7; }
+.part-pill.active { opacity: 1; }
+.part-pill--add   { opacity: 0.3; }
+.part-pill--add:hover { opacity: 0.6; }
+
+/* ── nom éditable ── */
+.partition-name-wrap {
     display: flex;
     align-items: center;
     gap: 0.2em;
-    padding: 0.2em 0.5em;
-    border-radius: 0.3em 0.3em 0 0;
-    background: #e0e0e0;
-    font-size: 0.8em;
+}
+.partition-name {
+    font-weight: bold;
+    outline: none;
+    min-width: 2em;
+    cursor: text;
+}
+.partition-name-del {
+    opacity: 0.3;
     cursor: pointer;
+    font-size: 0.85em;
 }
-.partition-tab.active {
-    background: #fff;
-    border: 1px solid #ccc;
-    border-bottom: 1px solid #fff;
-    margin-bottom: -1px;
-}
-.partition-tab-name { outline: none; min-width: 2em; }
-.partition-tab-del  { opacity: 0.4; cursor: pointer; }
-.partition-tab-del:hover { opacity: 1; }
-.partition-tab-add  { background: transparent; opacity: 0.5; font-size: 1.05em; padding: 0.1em 0.5em; }
-.partition-tab-add:hover { opacity: 1; }
+.partition-name-del:hover { opacity: 1; }
 
 /* ── contrôles ── */
 .partition-controls {
@@ -1095,25 +1108,46 @@ div.statebar {
 /* ── éditeur (scrollable) ── */
 .partition-editor {
     overflow-x: auto;
-    padding: 0.4em 0.5em 0.5em;
     background: #fff;
 }
 
-/* ── piste accord — deux rangées ── */
-.part-chord-track {
+/* ── barre de durée ── */
+.part-dur-bar {
     display: flex;
-    flex-direction: column;
-    border-bottom: 1px solid #ddd;
+    align-items: center;
+    gap: 0;
+    padding: 0.3em 0.5em;
+    border-bottom: 1px solid #eee;
+    border: 1px solid #ccc;
+    border-radius: 0.3em;
+    width: fit-content;
+    margin: 0.3em 0.5em;
 }
-.part-ctrack-row {
-    display: flex;
-    flex-direction: row;
+.part-dur-btn {
+    border: none;
+    border-left: 1px solid #ccc;
+    background: #f5f5f5;
+    font-family: inherit;
+    font-size: 0.78em;
+    padding: 0.15em 0.55em;
+    cursor: pointer;
+    line-height: 1;
+    color: #555;
+}
+.part-dur-btn:first-child { border-left: none; }
+.part-dur-btn:hover  { background: #ddd; }
+.part-dur-btn.active { background: #ede9fe; color: #7c3aed; font-weight: bold; }
+
+/* ── séquenceur — grille CSS unifiée ── */
+.part-seq-grid {
+    display: grid;
+    /* grid-template-columns défini en JS : repeat(N, minmax(0.85em, 3rem)) */
+    grid-template-rows: 3em 1.4em repeat(6, 1.1em) 1.4em;
+    border-bottom: 1px solid #ddd;
 }
 
 /* rangée 1 — accords */
-.part-ctrack-chord-row { min-height: 5.5em; }
 .part-ctrack-cell {
-    flex: 1;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -1122,95 +1156,87 @@ div.statebar {
     padding: 0.15em 0.1em;
     border-right: 1px solid #ececec;
     cursor: pointer;
-    min-width: 0.85em;
     overflow: hidden;
-    position: relative;
     background: #fafafa;
     transition: background 0.08s;
 }
-.part-ctrack-cell.beat-start { border-left: 1px solid #b8b8b8; }
+.part-ctrack-cell.beat-start   { border-left: 1px solid #b8b8b8; }
 .part-ctrack-cell.chord-active { background: rgba(124, 58, 237, 0.07); }
 .part-ctrack-cell.chord-start  { background: #f0e8ff; }
 .part-ctrack-cell:not(.chord-start):hover { background: #f3eeff; }
-.part-chord-vert {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 1px;
-}
-.part-chord-vert span {
-    font-size: 0.52em;
-    font-family: monospace;
-    background: #ddd4f4;
-    border-radius: 0.2em;
-    padding: 0.05em 0.15em;
-    min-width: 1.1em;
-    text-align: center;
-    color: #333;
-    line-height: 1.2;
-}
 .part-chord-name-label {
-    font-size: 0.62em;
+    writing-mode: vertical-lr;
+    transform: rotate(180deg);
+    font-size: 0.72em;
     font-weight: bold;
     color: #5b21b6;
     white-space: nowrap;
     overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 100%;
-    text-align: center;
+    max-height: 100%;
 }
 
 /* rangée 2 — délimiteurs de fin */
-.part-ctrack-delim-row { min-height: 1.4em; }
 .part-ctrack-delim-cell {
-    flex: 1;
     display: flex;
     align-items: center;
     justify-content: center;
     border-right: 1px solid #ececec;
     cursor: pointer;
-    min-width: 0.85em;
     font-size: 0.7em;
     color: #bbb;
     background: #fafafa;
     transition: background 0.08s, color 0.08s;
 }
-.part-ctrack-delim-cell.beat-start { border-left: 1px solid #b8b8b8; }
+.part-ctrack-delim-cell.beat-start   { border-left: 1px solid #b8b8b8; }
 .part-ctrack-delim-cell.delim-active { color: #7c3aed; background: #ede9fe; }
 .part-ctrack-delim-cell:not(.delim-active):hover { background: #f3eeff; color: #9966cc; }
 
-/* ── grille picking — colonnes ── */
-.part-grid {
-    display: flex;
-    flex-direction: row;
-}
-.part-col {
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-    border-right: 1px solid #ececec;
-    cursor: pointer;
-    min-width: 0.85em;
-}
-.part-col.beat-start { border-left: 1px solid #b8b8b8; }
-.part-col.playhead   { background: rgba(124, 58, 237, 0.08); }
+/* rangées 3–8 — picking */
 .part-cell {
-    flex: 1;
-    min-height: 1.1em;
+    border-right: 1px solid #ececec;
     border-bottom: 1px solid #ececec;
     background: #fafafa;
     transition: background 0.08s;
     touch-action: none;
+    cursor: pointer;
 }
-.part-cell.active { background: #7c3aed; }
-.part-cell:hover:not(.active) { background: #ddd8f8; }
+.part-cell.beat-start        { border-left: 1px solid #b8b8b8; }
+.part-cell:hover             { background: #ddd8f8; }
 
-/* colonnes hors-durée (après le premier délimitateur) */
-.part-col.out-of-range,
-.part-ctrack-cell.out-of-range,
-.part-ctrack-delim-cell.out-of-range {
-    opacity: 0.3;
+/* barre de note — par-dessus la click zone, pointer-events none */
+.part-note-bar {
+    background: #7c3aed;
+    border-radius: 0.15em;
+    margin: 1px;
+    pointer-events: none;
+    z-index: 1;
 }
+.part-note-bar.out-of-range { opacity: 0.3; }
+
+/* rangée 9 — règle de mesure */
+.part-ruler-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.6em;
+    color: #aaa;
+    border-right: 1px solid #ececec;
+    background: #f5f5f5;
+}
+.part-ruler-cell.beat-start { border-left: 1px solid #b8b8b8; }
+
+/* playhead — toutes les cellules de la colonne */
+.part-ctrack-cell.playhead,
+.part-ctrack-delim-cell.playhead,
+.part-cell.playhead,
+.part-ruler-cell.playhead { background: rgba(124, 58, 237, 0.08); }
+/* supprimé : .part-cell.active n'existe plus (note bar gère la couleur) */
+
+/* hors-durée (après le premier délimitateur) */
+.part-ctrack-cell.out-of-range,
+.part-ctrack-delim-cell.out-of-range,
+.part-cell.out-of-range,
+.part-ruler-cell.out-of-range { opacity: 0.3; }
 
 /* ─── Paramètres ─────────────────────────────────────────────────────────── */
 .ux-panel-content:has(.settings-link) {
