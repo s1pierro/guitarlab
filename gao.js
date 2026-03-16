@@ -1300,7 +1300,14 @@ class ChordWizard {
 
                 const cards = document.createElement('div');
                 cards.classList.add('catalog-pos-cards');
-                vs.forEach(v => cards.appendChild(makeCard(v, chordName)));
+                const sortPrio = v => {
+                    const p = this._voicingProps(v, state.root, state.chordTypeIndex);
+                    if (p.noMuteGap)   return 0;
+                    if (p.strictTriad) return 1;
+                    return 2;
+                };
+                vs.slice().sort((a, b) => sortPrio(a) - sortPrio(b))
+                  .forEach(v => cards.appendChild(makeCard(v, chordName)));
 
                 row.append(label, cards);
                 grid.appendChild(row);
