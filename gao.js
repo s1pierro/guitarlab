@@ -2739,9 +2739,16 @@ class Application {
             () => {
                 onReady();
                 // restaurer la vue caméra pour l'orientation courante
+                // si aucune vue mémorisée : cadrage 1–18 par défaut
                 const savedViews = this.storage.get('camera-views', {});
                 const v = savedViews[this._orientKey()];
-                if (v) { this.groundrender.setView(v); this.groundrender.render(); }
+                if (v) {
+                    this.groundrender.setView(v);
+                    this.groundrender.render();
+                } else {
+                    const fullFrame = CAMERA_FRAMES.find(f => f.id === 'full');
+                    if (fullFrame) this.groundrender.flyTo(fullFrame, 800, this.groundrender.strings);
+                }
                 // sauvegarder à chaque mouvement de caméra
                 this.groundrender.onViewChange(() => {
                     const views = this.storage.get('camera-views', {});
