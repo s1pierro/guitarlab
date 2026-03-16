@@ -597,7 +597,7 @@ class PartitionManager {
         this.items = (d.items || []).map(item => {
             const m = _partMigrateItem(item);
             m.chords = (m.chords || []).map(c => ({ ...c, chord: c.chord ? _partReviveChord(c.chord) : null }));
-            // migration boolean → integer pour les patterns sauvegardés avant v1.9.3.9
+            // migration boolean → integer pour les patterns sauvegardés avant v1.9.4.0
             if (m.pattern) m.pattern = m.pattern.map(row => (row || []).map(v => v === true ? 1 : v === false ? 0 : (v || 0)));
             return m;
         });
@@ -2162,7 +2162,7 @@ class GroundRender {
             if (percentComplete < 100) {
                 elem.textContent = Math.round(percentComplete) + ' %';
             } else {
-                elem.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.3.9</span>';
+                elem.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.4.0</span>';
             }
         }
     }
@@ -2905,7 +2905,7 @@ class Application {
         document.body.appendChild (this.appbody);
         this.appstamp = document.createElement('div');
         this.appstamp.id = 'app-stamp';
-        this.appstamp.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.3.9</span>';
+        this.appstamp.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.4.0</span>';
         this.appbody.appendChild (this.appstamp);
 
         this.touchlayer = document.createElement('div');
@@ -2924,28 +2924,18 @@ class Application {
             () => { if (this.computedguitar) this.computedguitar.fingerprintsrender(); },
             () => {
                 onReady();
-                // restaurer la vue caméra pour l'orientation courante
-                // si aucune vue mémorisée : cadrage 1–18 par défaut
-                const savedViews = this.storage.get('camera-views', {});
-                const v = savedViews[this._orientKey()];
-                if (v) {
-                    this.groundrender.setView(v);
-                    this.groundrender.render();
-                } else {
-                    const fullFrame = CAMERA_FRAMES.find(f => f.id === 'full');
-                    if (fullFrame) this.groundrender.flyTo(fullFrame, 800, this.groundrender.strings);
-                }
+                // cadrage 1–18 systématique au lancement
+                const fullFrame = CAMERA_FRAMES.find(f => f.id === 'full');
+                if (fullFrame) this.groundrender.flyTo(fullFrame, 800, this.groundrender.strings);
                 // sauvegarder à chaque mouvement de caméra
                 this.groundrender.onViewChange(() => {
                     const views = this.storage.get('camera-views', {});
                     views[this._orientKey()] = this.groundrender.getView();
                     this.storage.set('camera-views', views);
                 });
-                // changer de vue au changement d'orientation
+                // cadrage 1–18 systématique au changement d'orientation
                 window.matchMedia('(orientation: portrait)').addEventListener('change', () => {
-                    const views = this.storage.get('camera-views', {});
-                    const ov = views[this._orientKey()];
-                    if (ov) { this.groundrender.setView(ov); this.groundrender.render(); }
+                    if (fullFrame) this.groundrender.flyTo(fullFrame, 600, this.groundrender.strings);
                 });
                 // boutons de cadrage
                 this._buildCameraFrameButtons();
