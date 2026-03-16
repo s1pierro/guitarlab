@@ -2885,6 +2885,9 @@ class Application {
         if (savedFrets) {
             for (let i = 0; i < savedFrets.length; i++)
                 this.computedguitar.strings[i].forcehold(savedFrets[i]);
+        } else {
+            // Première utilisation : La mineur x 0 2 2 1 0
+            [-1, 0, 2, 2, 1, 0].forEach((f, i) => this.computedguitar.strings[i].forcehold(f));
         }
         // Initialise le panel on-air dès le démarrage (première utilisation incluse)
         onStateChange();
