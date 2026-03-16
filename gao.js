@@ -2879,6 +2879,8 @@ class Application {
             for (let i = 0; i < savedFrets.length; i++)
                 this.computedguitar.strings[i].forcehold(savedFrets[i]);
         }
+        // Initialise le panel on-air dès le démarrage (première utilisation incluse)
+        onStateChange();
 
         // ── restauration bibliothèque (migration depuis ancien format plat) ──
         const savedSets = this.storage.get('chord-sets', null);
