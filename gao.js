@@ -809,14 +809,9 @@ class PartitionManager {
         controls.append(bpmWrap, this._playBtn, loopBtn, divWrap);
         root.appendChild(controls);
 
-        // ── éditeur scrollable ──
+        // ── éditeur (piste accord + grille picking) ──
         const editor = document.createElement('div');
         editor.classList.add('partition-editor');
-
-        // conteneur interne : largeur explicite = p.length × 1.4rem, alignement garanti
-        const inner = document.createElement('div');
-        inner.classList.add('part-editor-inner');
-        inner.style.width = `calc(${p.length} * 1.4rem)`;
 
         // ── piste accord — deux rangées par unité temporelle ──
         // Rangée 1 (accord)    : une cellule par unité, click = assigner/supprimer accord
@@ -904,7 +899,7 @@ class PartitionManager {
         }
 
         chordTrack.append(chordRow, delimRow);
-        inner.appendChild(chordTrack);
+        editor.appendChild(chordTrack);
 
         // ── grille de picking — columns ──
         const grid = document.createElement('div');
@@ -931,27 +926,8 @@ class PartitionManager {
             }
             grid.appendChild(col);
         }
-        inner.appendChild(grid);
+        editor.appendChild(grid);
 
-        // ── règle de mesures ──
-        const unitsPerBeat    = { '8n': 2, '16n': 4, '32n': 8 }[p.division] || 4;
-        const unitsPerMeasure = unitsPerBeat * 4;
-        const ruler = document.createElement('div');
-        ruler.classList.add('part-ruler');
-        for (let u = 0; u < p.length; u++) {
-            const cell = document.createElement('div');
-            cell.classList.add('part-ruler-cell');
-            if (u % 4 === 0)        cell.classList.add('beat-start');
-            if (u >= firstDelimAt)  cell.classList.add('out-of-range');
-            if (u % unitsPerMeasure === 0) {
-                cell.textContent = String(u / unitsPerMeasure + 1);
-                cell.classList.add('measure-start');
-            }
-            ruler.appendChild(cell);
-        }
-        inner.appendChild(ruler);
-
-        editor.appendChild(inner);
         root.appendChild(editor);
     }
 }
@@ -2102,7 +2078,7 @@ class GroundRender {
             if (percentComplete < 100) {
                 elem.textContent = Math.round(percentComplete) + ' %';
             } else {
-                elem.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.3.7</span>';
+                elem.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.3.3</span>';
             }
         }
     }
@@ -2845,7 +2821,7 @@ class Application {
         document.body.appendChild (this.appbody);
         this.appstamp = document.createElement('div');
         this.appstamp.id = 'app-stamp';
-        this.appstamp.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.3.7</span>';
+        this.appstamp.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.3.3</span>';
         this.appbody.appendChild (this.appstamp);
 
         this.touchlayer = document.createElement('div');
