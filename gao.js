@@ -595,7 +595,7 @@ class PartitionManager {
     set data (d) {
         this.items = (d.items || []).map(item => {
             const m = _partMigrateItem(item);
-            m.chords = (m.chords || []).map(c => ({ ...c, chord: _partReviveChord(c.chord) }));
+            m.chords = (m.chords || []).map(c => ({ ...c, chord: c.chord ? _partReviveChord(c.chord) : null }));
             return m;
         });
         this.activeId = d.activeId || (this.items[0] && this.items[0].id) || null;
@@ -2078,7 +2078,7 @@ class GroundRender {
             if (percentComplete < 100) {
                 elem.textContent = Math.round(percentComplete) + ' %';
             } else {
-                elem.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.3.2</span>';
+                elem.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.3.3</span>';
             }
         }
     }
@@ -2821,7 +2821,7 @@ class Application {
         document.body.appendChild (this.appbody);
         this.appstamp = document.createElement('div');
         this.appstamp.id = 'app-stamp';
-        this.appstamp.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.3.2</span>';
+        this.appstamp.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.3.3</span>';
         this.appbody.appendChild (this.appstamp);
 
         this.touchlayer = document.createElement('div');
