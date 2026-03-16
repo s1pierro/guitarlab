@@ -1183,19 +1183,20 @@ div.statebar {
     height: 4px;
     background: #00000012;
     border-radius: 2px;
-    margin: 0.3em 0 0.4em;
+    margin: 0.8em 0 0.6em;
+    overflow: visible;
 }
-#ecoute-needle::before,
-#ecoute-needle::after {
-    content: '';
+.en-grad {
     position: absolute;
     top: -3px;
     width: 1px;
+    transform: translateX(-50%);
+    background: #00000030;
     height: 10px;
-    background: #00000022;
 }
-#ecoute-needle::before { left: 25%; }
-#ecoute-needle::after  { right: 25%; }
+.en-grad-bound  { height: 10px; background: #00000030; }
+.en-grad-zone   { height: 10px; background: #27ae6055; }
+.en-grad-center { height: 16px; top: -6px; width: 2px; background: #00000055; }
 #ecoute-needle-cursor {
     position: absolute;
     top: -4px;

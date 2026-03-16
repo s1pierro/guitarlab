@@ -2212,6 +2212,19 @@ class PanelEcoute extends UXPanel {
         // aiguille accordeur
         const needle = document.createElement('div');
         needle.id = 'ecoute-needle';
+        // graduations : bornes ±50¢, zone verte ±10¢, centre 0¢
+        [
+            { pct:   0, cls: 'en-grad-bound' },
+            { pct:  40, cls: 'en-grad-zone'  },  // -10¢
+            { pct:  50, cls: 'en-grad-center'},  //   0¢
+            { pct:  60, cls: 'en-grad-zone'  },  // +10¢
+            { pct: 100, cls: 'en-grad-bound' },
+        ].forEach(({ pct, cls }) => {
+            const g = document.createElement('span');
+            g.className = 'en-grad ' + cls;
+            g.style.left = pct + '%';
+            needle.appendChild(g);
+        });
         this._needleEl = document.createElement('div');
         this._needleEl.id = 'ecoute-needle-cursor';
         needle.appendChild(this._needleEl);
