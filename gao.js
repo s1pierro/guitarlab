@@ -1914,10 +1914,11 @@ class AppStorage {
 
 // ── UXPanel : classe de base pour chaque panneau de la pile ─────────────────
 class UXPanel {
-    constructor (id, label, icon) {
-        this.id       = id;
-        this.label    = label;
-        this.icon     = icon;
+    constructor (id, label, icon, fullLabel = null) {
+        this.id        = id;
+        this.label     = label;
+        this.icon      = icon;
+        this.fullLabel = fullLabel;
         this.expanded = false;
         this._stack   = null;   // injecté par UXStack
         this._panelEl = null;
@@ -1938,7 +1939,7 @@ class UXPanel {
             this._panelEl.className = 'ux-panel';
             const header = document.createElement('div');
             header.className = 'ux-panel-header';
-            header.innerHTML = `<i class="${this.icon}"></i><span>${this.label}</span>`;
+            header.innerHTML = `<i class="${this.icon}"></i><span>${this.fullLabel || this.label}</span>`;
             header.addEventListener('click', () => this._stack && this._stack.collapse(this));
             this._panelEl.appendChild(header);
             this._contentEl = document.createElement('div');
@@ -1967,7 +1968,7 @@ class UXPanel {
 // ── Panneaux ─────────────────────────────────────────────────────────────────
 class PanelBibliotheque extends UXPanel {
     constructor (chordwizard) {
-        super('bibliotheque', 'Bibliothèque', 'icon-attach-2');
+        super('bibliotheque', 'Bibliothèque', 'icon-attach-2', 'Bibliothèque de jeux d\'accords');
         this.chordwizard = chordwizard;
     }
     mountContent (container) {
@@ -1980,7 +1981,7 @@ class PanelBibliotheque extends UXPanel {
 
 class PanelCatalogue extends UXPanel {
     constructor (chordwizard, computedguitar, groundrender, storage) {
-        super('catalogue', 'Catalogue', 'icon-book');
+        super('catalogue', 'Catalogue', 'icon-book', 'Catalogue d\'accords');
         this.chordwizard    = chordwizard;
         this.computedguitar = computedguitar;
         this.groundrender   = groundrender;
@@ -2081,7 +2082,7 @@ class PanelParametres extends UXPanel {
 
 class PanelReperes extends UXPanel {
     constructor () {
-        super('notation', 'Notation', 'icon-help');
+        super('notation', 'Notation', 'icon-help', 'Système de notation');
     }
     mountContent (container) {
         container.id = 'notation-content';
@@ -2158,7 +2159,7 @@ class PanelReperes extends UXPanel {
 // ── PanelEcoute : visualiseur micro + détection de note ──────────────────────
 class PanelEcoute extends UXPanel {
     constructor () {
-        super('ecoute', 'Accordeur', 'icon-mic');
+        super('ecoute', 'Accordeur', 'icon-mic', 'Flash accordeur');
         this._stream     = null;
         this._audioCtx   = null;
         this._analyser   = null;
