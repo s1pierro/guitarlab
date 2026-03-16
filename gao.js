@@ -1507,6 +1507,8 @@ class Cameraman {
         this.scene = null;          // injecté depuis GroundRender après init
         this._debugMeshes = [];
         this._debug = false;        // activer pour les outils de calibration cadrages
+        this._activeFrame   = null; // cadrage actif (null = vue libre)
+        this._activeStrings = null;
 
         this.camera = new THREE.PerspectiveCamera( 25, window.innerWidth / window.innerHeight, 0.1, 15 );
         this.camera.position.set( 0.13203648995258088, -0.05773723849390569, 1.104895121140156 );
@@ -1555,6 +1557,8 @@ class Cameraman {
     }
     flyTo (frame, durationMs = 550, strings = null) {
         if (this._flyRaf) { cancelAnimationFrame(this._flyRaf); this._flyRaf = null; }
+        this._activeFrame   = frame;
+        this._activeStrings = strings;
         this._debugSpheres(frame, strings);
 
         // Précalcule le pan d'alignement depuis la position finale frame.pos/target,
@@ -1981,6 +1985,10 @@ class GroundRender {
     onWindowResize() {
         this.cameraman.resize( window.innerWidth, window.innerHeight );
         this.renderer.setSize( window.innerWidth, window.innerHeight * this.cameraman.viewRatio );
+        // Si un cadrage est actif, recalculer l'alignement pour le nouvel aspect ratio
+        if (this.cameraman._activeFrame) {
+            this.cameraman.flyTo(this.cameraman._activeFrame, 0, this.cameraman._activeStrings);
+        }
         this.render();
     }
     render() {
@@ -2996,6 +3004,7 @@ class Application {
         freeBtn.textContent = '↺';
         freeBtn.title = 'Vue libre';
         freeBtn.addEventListener('click', () => {
+            this.groundrender.cameraman._activeFrame = null;
             this.groundrender.clearZone();
             const v = this.storage.get('camera-views', {})[this._orientKey()];
             if (v) { this.groundrender.setView(v); this.groundrender.render(); }
