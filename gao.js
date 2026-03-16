@@ -1602,6 +1602,13 @@ class Cameraman {
         this.camera.position.add(pan);
         this.controls.target.add(pan);
         this.controls.update();
+
+        // Vérification post-alignement : projection réelle de l'ancre après pan
+        this.camera.updateMatrixWorld();
+        const ndcPost = anchor.clone().project(this.camera);
+        const reached = { cx: (ndcPost.x + 1) / 2, cy: (1 - ndcPost.y) / 2 };
+        console.log(`[Cameraman] ${frame.id} — cible: cx=${cx.toFixed(3)} cy=${cy.toFixed(3)} | atteint: cx=${reached.cx.toFixed(3)} cy=${reached.cy.toFixed(3)}`);
+
         this.onNeedRender();
     }
 
