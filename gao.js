@@ -545,9 +545,9 @@ function _partNew () {
         name: 'Partition 1',
         bpm: 120,
         division: '16n',
-        length: 32,
+        length: 4,
         chords: [],
-        pattern: Array(6).fill(null).map(() => Array(32).fill(false))
+        pattern: Array(6).fill(null).map(() => Array(4).fill(false))
     };
 }
 function _partReviveChord (c) {
@@ -613,6 +613,27 @@ class PartitionManager {
         let result = null;
         for (const c of p.chords) { if (c.at <= unit) result = c; }
         return result;
+    }
+
+    // ── extension automatique ─────────────────────────────────────────────────
+    // Garantit 4 unités libres après la dernière entrée (accord ou cellule active).
+    // Retourne true si la grille a été étendue.
+    _autoExtend (p) {
+        let last = -1;
+        for (const c of p.chords) if (c.chord !== null && c.at > last) last = c.at;
+        for (let s = 0; s < 6; s++)
+            for (let u = 0; u < p.length; u++)
+                if (p.pattern[s]?.[u]) last = Math.max(last, u);
+        const needed = Math.ceil((last + 5) / 4) * 4; // last+1 + 4 unités libres, arrondi à 4
+        if (needed > p.length) {
+            for (let s = 0; s < 6; s++) {
+                if (!p.pattern[s]) p.pattern[s] = [];
+                while (p.pattern[s].length < needed) p.pattern[s].push(false);
+            }
+            p.length = needed;
+            return true;
+        }
+        return false;
     }
 
     // ── lecture ──────────────────────────────────────────────────────────────
@@ -863,9 +884,9 @@ class PartitionManager {
                 cCell.addEventListener('click', () => {
                     const c = this.getCurrentChord();
                     if (!c) return;
-                    // supprimer tout éventuel délimiteur sur cette unité
                     p.chords = p.chords.filter(c2 => c2.at !== u);
                     p.chords.push({ at: u, chord: c });
+                    this._autoExtend(p);
                     this.onStateChange(); this._render();
                 });
             }
@@ -919,8 +940,9 @@ class PartitionManager {
                     if (!p.pattern[s]) p.pattern[s] = Array(p.length).fill(false);
                     p.pattern[s][u] = !p.pattern[s][u];
                     cell.classList.toggle('active', p.pattern[s][u]);
+                    const grew = p.pattern[s][u] && this._autoExtend(p);
                     this.onStateChange();
-                    // pas de restart pendant la lecture — le tick suivant lira la nouvelle valeur
+                    if (grew) this._render(); // re-render si nouvelles colonnes apparues
                 });
                 col.appendChild(cell);
             }
@@ -2078,7 +2100,7 @@ class GroundRender {
             if (percentComplete < 100) {
                 elem.textContent = Math.round(percentComplete) + ' %';
             } else {
-                elem.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.3.3</span>';
+                elem.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.3.4</span>';
             }
         }
     }
@@ -2821,7 +2843,7 @@ class Application {
         document.body.appendChild (this.appbody);
         this.appstamp = document.createElement('div');
         this.appstamp.id = 'app-stamp';
-        this.appstamp.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.3.3</span>';
+        this.appstamp.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.3.4</span>';
         this.appbody.appendChild (this.appstamp);
 
         this.touchlayer = document.createElement('div');
