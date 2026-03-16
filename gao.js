@@ -1904,6 +1904,8 @@ class UXPanel {
     mountContent (container) {}
     // à surcharger : appelé à chaque fois que le panneau est déplié
     onExpanded () {}
+    // à surcharger : appelé à chaque fois que le panneau est replié
+    onCollapsed () {}
 
     getPanel () {
         if (!this._panelEl) {
@@ -2128,6 +2130,102 @@ class PanelReperes extends UXPanel {
     }
 }
 
+// ── PanelEcoute : visualiseur micro + égaliseur ──────────────────────────────
+class PanelEcoute extends UXPanel {
+    constructor () {
+        super('ecoute', 'Écoute', 'icon-mic');
+        this._stream    = null;
+        this._audioCtx  = null;
+        this._analyser  = null;
+        this._source    = null;
+        this._rafId     = null;
+        this._active    = false;
+        this._canvas    = null;
+        this._toggleBtn = null;
+    }
+
+    mountContent (container) {
+        container.id = 'ecoute-content';
+
+        this._toggleBtn = document.createElement('a');
+        this._toggleBtn.className = 'settings-link';
+        this._toggleBtn.innerHTML = '<i class="icon-mic"></i><span>Activer le micro</span>';
+        this._toggleBtn.addEventListener('click', () => this._toggle());
+        container.appendChild(this._toggleBtn);
+
+        this._canvas = document.createElement('canvas');
+        this._canvas.id = 'ecoute-canvas';
+        container.appendChild(this._canvas);
+    }
+
+    onExpanded () {
+        if (this._canvas) {
+            this._canvas.width  = this._canvas.offsetWidth || 300;
+            this._canvas.height = 72;
+        }
+        if (this._active && !this._rafId) this._draw();
+    }
+
+    onCollapsed () {
+        if (this._rafId) { cancelAnimationFrame(this._rafId); this._rafId = null; }
+    }
+
+    async _toggle () {
+        if (this._active) this._stop();
+        else await this._start();
+    }
+
+    async _start () {
+        try {
+            this._stream   = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+            this._audioCtx = new AudioContext();
+            this._analyser = this._audioCtx.createAnalyser();
+            this._analyser.fftSize = 128;
+            this._source   = this._audioCtx.createMediaStreamSource(this._stream);
+            this._source.connect(this._analyser);
+            this._active   = true;
+            this._toggleBtn.innerHTML = '<i class="icon-mic"></i><span>Désactiver le micro</span>';
+            this._draw();
+        } catch (e) {
+            console.warn('Micro non disponible :', e);
+        }
+    }
+
+    _stop () {
+        if (this._rafId)    { cancelAnimationFrame(this._rafId); this._rafId = null; }
+        if (this._source)   { this._source.disconnect(); this._source = null; }
+        if (this._audioCtx) { this._audioCtx.close();    this._audioCtx = null; }
+        if (this._stream)   { this._stream.getTracks().forEach(t => t.stop()); this._stream = null; }
+        this._analyser = null;
+        this._active   = false;
+        this._toggleBtn.innerHTML = '<i class="icon-mic"></i><span>Activer le micro</span>';
+        if (this._canvas) {
+            const ctx = this._canvas.getContext('2d');
+            ctx.clearRect(0, 0, this._canvas.width, this._canvas.height);
+        }
+    }
+
+    _draw () {
+        if (!this._active || !this._analyser) return;
+        this._rafId = requestAnimationFrame(() => this._draw());
+        const canvas = this._canvas;
+        const W = canvas.offsetWidth || 300;
+        if (canvas.width !== W) canvas.width = W;
+        const H    = canvas.height;
+        const ctx  = canvas.getContext('2d');
+        const data = new Uint8Array(this._analyser.frequencyBinCount);
+        this._analyser.getByteFrequencyData(data);
+        ctx.clearRect(0, 0, W, H);
+        const barW = W / data.length;
+        for (let i = 0; i < data.length; i++) {
+            const v = data[i] / 255;
+            const h = v * H;
+            ctx.fillStyle = `hsla(${200 + v * 40}, 70%, ${30 + v * 35}%, 0.85)`;
+            ctx.fillRect(i * barW, H - h, Math.max(barW - 1, 1), h);
+        }
+    }
+}
+
 // ── UXStack : gestionnaire de la pile ────────────────────────────────────────
 class UXStack {
     constructor (storage) {
@@ -2173,6 +2271,7 @@ class UXStack {
 
     collapse (panel) {
         panel.expanded = false;
+        panel.onCollapsed();
         const expanded  = this.panels.filter(p => p.expanded);
         const collapsed = this.panels.filter(p => !p.expanded && p !== panel);
         this.panels = [...expanded, panel, ...collapsed];
@@ -2408,6 +2507,7 @@ class Application {
         this.uxstack.add(new PanelBibliotheque(this.chordwizard));
         this.uxstack.add(new PanelCatalogue(this.chordwizard, this.computedguitar, this.groundrender, this.storage));
         this.uxstack.add(new PanelPartitions(this.partitions));
+        this.uxstack.add(new PanelEcoute());
         this.uxstack.add(new PanelParametres(this.storage));
         this.uxstack.add(new PanelReperes());
         this.uxstack.mount(this.ux);
