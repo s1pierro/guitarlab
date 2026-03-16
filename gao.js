@@ -1692,6 +1692,18 @@ class GroundRender {
                         }
                         if (child.name === 'guitar.top')
                         {
+                            // pas de vt dans l'OBJ — projection planaire XY depuis la bbox
+                            child.geometry.computeBoundingBox();
+                            const bb  = child.geometry.boundingBox;
+                            const pos = child.geometry.attributes.position;
+                            const uv  = new Float32Array(pos.count * 2);
+                            const rX  = 1 / (bb.max.x - bb.min.x);
+                            const rY  = 1 / (bb.max.y - bb.min.y);
+                            for (let i = 0; i < pos.count; i++) {
+                                uv[i * 2]     = (pos.getX(i) - bb.min.x) * rX;
+                                uv[i * 2 + 1] = (pos.getY(i) - bb.min.y) * rY;
+                            }
+                            child.geometry.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
                             child.material = new THREE.MeshPhongMaterial({
                                 map: spruceTexture,
                                 side: THREE.DoubleSide,
