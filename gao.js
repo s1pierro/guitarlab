@@ -2173,7 +2173,9 @@ class PanelEcoute extends UXPanel {
         this._needleEl   = null;
         this._timeBuf    = null;
         this._freqBuf    = null;
-        this._freqHist   = [];   // lissage des dernières fréquences détectées
+        this._freqHist   = [];
+        this._showViz    = false;  // visualiseur désactivé par défaut
+        this._vizBtn     = null;
     }
 
     mountContent (container) {
@@ -2184,6 +2186,16 @@ class PanelEcoute extends UXPanel {
         this._toggleBtn.innerHTML = '<i class="icon-mic"></i><span>Activer le micro</span>';
         this._toggleBtn.addEventListener('click', () => this._toggle());
         container.appendChild(this._toggleBtn);
+
+        this._vizBtn = document.createElement('a');
+        this._vizBtn.className = 'settings-link';
+        this._vizBtn.innerHTML = '<i class="icon-sliders"></i><span>Afficher le visualiseur</span>';
+        this._vizBtn.addEventListener('click', () => {
+            this._showViz = !this._showViz;
+            this._vizBtn.innerHTML = `<i class="icon-sliders"></i><span>${this._showViz ? 'Masquer' : 'Afficher'} le visualiseur</span>`;
+            this._canvas.style.display = this._showViz ? 'block' : 'none';
+        });
+        container.appendChild(this._vizBtn);
 
         // affichage note + cents
         const noteRow = document.createElement('div');
@@ -2205,9 +2217,10 @@ class PanelEcoute extends UXPanel {
         needle.appendChild(this._needleEl);
         container.appendChild(needle);
 
-        // canvas EQ
+        // canvas EQ (caché par défaut)
         this._canvas = document.createElement('canvas');
         this._canvas.id = 'ecoute-canvas';
+        this._canvas.style.display = 'none';
         container.appendChild(this._canvas);
     }
 
@@ -2271,22 +2284,23 @@ class PanelEcoute extends UXPanel {
         if (!this._active || !this._analyser) return;
         this._rafId = requestAnimationFrame(() => this._draw());
 
-        // ── EQ ──────────────────────────────────────────────────────────────
-        const canvas = this._canvas;
-        const W = canvas.offsetWidth || 300;
-        if (canvas.width !== W) canvas.width = W;
-        const H   = canvas.height;
-        const ctx = canvas.getContext('2d');
-        this._analyser.getByteFrequencyData(this._freqBuf);
-        ctx.clearRect(0, 0, W, H);
-        // affiche les 128 premiers bins (couvre 0 – ~2.8 kHz @ 44100)
-        const bins = Math.min(128, this._freqBuf.length);
-        const barW = W / bins;
-        for (let i = 0; i < bins; i++) {
-            const v = this._freqBuf[i] / 255;
-            const h = v * H;
-            ctx.fillStyle = 'rgba(0,0,0,0.75)';
-            ctx.fillRect(i * barW, 0, Math.max(barW - 1, 1), h);
+        // ── EQ (optionnel) ───────────────────────────────────────────────────
+        if (this._showViz) {
+            const canvas = this._canvas;
+            const W = canvas.offsetWidth || 300;
+            if (canvas.width !== W) canvas.width = W;
+            const H   = canvas.height;
+            const ctx = canvas.getContext('2d');
+            this._analyser.getByteFrequencyData(this._freqBuf);
+            ctx.clearRect(0, 0, W, H);
+            const bins = Math.min(128, this._freqBuf.length);
+            const barW = W / bins;
+            for (let i = 0; i < bins; i++) {
+                const v = this._freqBuf[i] / 255;
+                const h = v * H;
+                ctx.fillStyle = 'rgba(0,0,0,0.75)';
+                ctx.fillRect(i * barW, 0, Math.max(barW - 1, 1), h);
+            }
         }
 
         // ── Pitch ────────────────────────────────────────────────────────────
