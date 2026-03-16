@@ -1587,10 +1587,11 @@ class GroundRender {
 
  // Lights
 
-        this.scene.add( new THREE.HemisphereLight( 0x888888, 0x555566 ) );
+        this.scene.add( new THREE.HemisphereLight( 0xcccccc, 0x7777aa ) );
 
-        this.addShadowedLight( 1, 1, 1, 0xffffff, 0.99 );
-        this.addShadowedLight( 0.5, 1, -1, 0xffffff, 0.99 );
+        this.addShadowedLight(  1,   1,  1, 0xffffff, 1.4 );
+        this.addShadowedLight(  0.5, 1, -1, 0xffffff, 1.2 );
+        this.addShadowedLight( -1,   0.5, 0.5, 0xfff4e0, 0.5 );
         // renderer
 
         this.renderer = new THREE.WebGLRenderer( { antialias: true } );
@@ -1606,6 +1607,63 @@ class GroundRender {
         //container.appendChild( renderer.domElement );
         window.addEventListener( 'resize', this.onWindowResize.bind(this), false );
     }
+    _makeSpruceTexture () {
+        const W = 512, H = 1024;
+        const canvas = document.createElement('canvas');
+        canvas.width  = W;
+        canvas.height = H;
+        const ctx = canvas.getContext('2d');
+
+        // base — épicéa blond crème
+        ctx.fillStyle = '#e8ddc8';
+        ctx.fillRect(0, 0, W, H);
+
+        // veines de fil droit (grain épicéa)
+        const rng = (seed => () => { seed = (seed * 1664525 + 1013904223) & 0xffffffff; return (seed >>> 0) / 0xffffffff; })(42);
+
+        const grainCount = 90;
+        for (let i = 0; i < grainCount; i++) {
+            const x     = rng() * W;
+            const width = 0.3 + rng() * 1.4;
+            const light = rng() > 0.5;
+            // alternance veines sombres / claires (bois de printemps / été)
+            const lum   = light ? Math.floor(210 + rng() * 30) : Math.floor(140 + rng() * 50);
+            const alpha = 0.08 + rng() * 0.18;
+            ctx.strokeStyle = `rgba(${lum}, ${Math.floor(lum * 0.82)}, ${Math.floor(lum * 0.62)}, ${alpha})`;
+            ctx.lineWidth   = width;
+            ctx.beginPath();
+            // légère ondulation naturelle
+            ctx.moveTo(x, 0);
+            const wave = (rng() - 0.5) * 6;
+            ctx.bezierCurveTo(x + wave, H * 0.33, x - wave, H * 0.66, x + (rng() - 0.5) * 4, H);
+            ctx.stroke();
+        }
+
+        // micro-pores (ponctuation de résineux)
+        for (let i = 0; i < 600; i++) {
+            const px = rng() * W;
+            const py = rng() * H;
+            const r  = 0.4 + rng() * 0.9;
+            ctx.fillStyle = `rgba(100, 70, 40, ${0.04 + rng() * 0.08})`;
+            ctx.beginPath();
+            ctx.arc(px, py, r, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // reflet verni satiné — léger dégradé diagonal
+        const grad = ctx.createLinearGradient(0, 0, W, H);
+        grad.addColorStop(0,    'rgba(255,255,240, 0.10)');
+        grad.addColorStop(0.45, 'rgba(255,255,240, 0.22)');
+        grad.addColorStop(1,    'rgba(255,255,240, 0.04)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, W, H);
+
+        const tex = new THREE.CanvasTexture(canvas);
+        tex.wrapS = THREE.RepeatWrapping;
+        tex.wrapT = THREE.RepeatWrapping;
+        tex.repeat.set(1, 2);
+        return tex;
+    }
     loadWavefrontGuitar (objfilename, mtlfilename, path = '') {
 
         new MTLLoader().setPath( path ).load( mtlfilename,
@@ -1620,20 +1678,29 @@ class GroundRender {
                 object.scale.set( this.scale.x, this.scale.y, this.scale.z );
                 object.castShadow = true;
                 object.receiveShadow = true;
+                const spruceTexture = this._makeSpruceTexture();
                 object.traverse( function ( child )
                 {
                     if ( child instanceof THREE.Mesh )
                     {
                         child.material.side = THREE.DoubleSide;
-                        //child.material.map = texture;
                         child.castShadow = true;
                         child.receiveShadow = true;
                         if (child.name == "frame" || child.name == "vitrages")
                         {
                             child.material.side = THREE.DoubleSide;
                         }
+                        if (child.name === 'guitar.top')
+                        {
+                            child.material = new THREE.MeshPhongMaterial({
+                                map: spruceTexture,
+                                side: THREE.DoubleSide,
+                                shininess: 60,
+                                specular: new THREE.Color(0x553322),
+                            });
+                        }
                     }
-                } );
+                }.bind(this) );
                 object.traverse( function( node ) {
                     if( node.material ) {
                         node.material.side = THREE.DoubleSide;
