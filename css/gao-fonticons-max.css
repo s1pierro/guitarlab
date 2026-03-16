@@ -87,7 +87,8 @@
 .icon-it-4:before { content: '\e81e'; } /* '' */
 .icon-it-b5:before { content: '\e81f'; } /* '' */
 .icon-it-5:before { content: '\e820'; } /* '' */
-.icon-it-#5:before { content: '\e821'; } /* '' */
+.icon-it-#5:before,
+.icon-it-m5:before { content: '\e821'; }
 .icon-it-6:before { content: '\e822'; } /* '' */
 .icon-it-7:before { content: '\e823'; } /* '' */
 .icon-it-b7:before { content: '\e824'; } /* '' */

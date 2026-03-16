@@ -393,67 +393,70 @@ class ChordPinBoard {
     // ── rendu ──
     update () {
         this.domctnr.innerHTML = '';
-        this.sets.forEach(set => {
-            const wrap = document.createElement('div');
-            wrap.classList.add('chord-set-item');
-            if (set.id === this.activeSetId) wrap.classList.add('active');
+        const active = this._activeSet();
 
-            // en-tête : nom éditable + bouton suppression
+        // ── set actif (déplié en tête) ──
+        if (active) {
+            const activeWrap = document.createElement('div');
+            activeWrap.className = 'chord-set-active';
+
             const header = document.createElement('div');
-            header.classList.add('chord-set-header');
-            header.addEventListener('click', () => { this.activeSetId = set.id; this.update(); });
+            header.className = 'chord-set-header';
 
             const nameEl = document.createElement('span');
-            nameEl.classList.add('chord-set-name');
-            nameEl.textContent = set.name;
+            nameEl.className = 'chord-set-name';
+            nameEl.textContent = active.name;
             nameEl.contentEditable = 'true';
             nameEl.addEventListener('click', e => e.stopPropagation());
             nameEl.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); nameEl.blur(); } });
-            nameEl.addEventListener('blur', () => {
-                set.name = nameEl.textContent.trim() || set.name;
-                this.onStateChange();
-            });
+            nameEl.addEventListener('blur', () => { active.name = nameEl.textContent.trim() || active.name; this.onStateChange(); });
 
             const delBtn = document.createElement('span');
-            delBtn.classList.add('chord-set-del');
+            delBtn.className = 'chord-set-del';
             delBtn.textContent = '×';
-            delBtn.addEventListener('click', e => { e.stopPropagation(); this.removeSet(set.id); });
+            delBtn.addEventListener('click', e => { e.stopPropagation(); this.removeSet(active.id); });
 
             header.append(nameEl, delBtn);
 
-            // grille d'accords
             const grid = document.createElement('div');
-            grid.classList.add('chord-set-grid');
-            set.chords.forEach(chord => {
+            grid.className = 'chord-set-grid';
+            active.chords.forEach(chord => {
                 const card = document.createElement('div');
-                card.classList.add('voicing-card');
-                card.innerHTML =
-                    '<div class="vc-frets">' + chord.frets.join(' ') + '</div>' +
-                    '<div class="vc-span">' + chord.name + '</div>';
+                card.className = 'voicing-card';
+                card.innerHTML = '<div class="vc-frets">' + chord.frets.join(' ') + '</div>' +
+                                 '<div class="vc-span">' + chord.name + '</div>';
                 card.addEventListener('click', () => this.pushchord(chord), true);
                 const del = document.createElement('span');
-                del.classList.add('vc-del');
+                del.className = 'vc-del';
                 del.textContent = '×';
-                del.addEventListener('click', e => {
-                    e.stopPropagation();
-                    set.chords = set.chords.filter(c => !c.sameAs(chord));
-                    this.update();
-                }, true);
+                del.addEventListener('click', e => { e.stopPropagation(); active.chords = active.chords.filter(c => !c.sameAs(chord)); this.update(); }, true);
                 card.appendChild(del);
                 grid.appendChild(card);
             });
 
-            wrap.append(header, grid);
-            this.domctnr.appendChild(wrap);
+            activeWrap.append(header, grid);
+            this.domctnr.appendChild(activeWrap);
+        }
+
+        // ── sets repliés + nouveau set ──
+        const collapsedRow = document.createElement('div');
+        collapsedRow.className = 'chord-sets-collapsed';
+
+        this.sets.filter(s => s.id !== this.activeSetId).forEach(set => {
+            const pill = document.createElement('button');
+            pill.className = 'chord-set-pill';
+            pill.textContent = set.name;
+            pill.addEventListener('click', () => { this.activeSetId = set.id; this.update(); this.onStateChange(); });
+            collapsedRow.appendChild(pill);
         });
 
-        // bouton nouveau set
         const addBtn = document.createElement('button');
-        addBtn.classList.add('chord-set-add');
-        addBtn.textContent = '+ nouveau set';
+        addBtn.className = 'chord-set-pill chord-set-pill--add';
+        addBtn.innerHTML = '<i class="icon-plus"></i>';
         addBtn.addEventListener('click', () => this.addSet());
-        this.domctnr.appendChild(addBtn);
+        collapsedRow.appendChild(addBtn);
 
+        this.domctnr.appendChild(collapsedRow);
         this.onStateChange();
     }
 }
@@ -1833,6 +1836,333 @@ class AppStorage {
         try { localStorage.removeItem(this._key(key)); }
         catch {}
     }
+    clear () {
+        const prefix = this.ns + ':';
+        Object.keys(localStorage)
+            .filter(k => k.startsWith(prefix))
+            .forEach(k => localStorage.removeItem(k));
+    }
+    exportAll () {
+        const prefix = this.ns + ':';
+        const out = {};
+        Object.keys(localStorage)
+            .filter(k => k.startsWith(prefix))
+            .forEach(k => { out[k.slice(prefix.length)] = JSON.parse(localStorage.getItem(k)); });
+        return out;
+    }
+    importAll (data) {
+        Object.entries(data).forEach(([k, v]) => this.set(k, v));
+    }
+}
+
+// ── UXPanel : classe de base pour chaque panneau de la pile ─────────────────
+class UXPanel {
+    constructor (id, label, icon) {
+        this.id       = id;
+        this.label    = label;
+        this.icon     = icon;
+        this.expanded = false;
+        this._stack   = null;   // injecté par UXStack
+        this._panelEl = null;
+        this._btnEl   = null;
+        this._contentEl = null;
+        this._mounted = false;
+    }
+    // à surcharger : monte le contenu dans container (appelé une seule fois)
+    mountContent (container) {}
+    // à surcharger : appelé à chaque fois que le panneau est déplié
+    onExpanded () {}
+
+    getPanel () {
+        if (!this._panelEl) {
+            this._panelEl = document.createElement('div');
+            this._panelEl.className = 'ux-panel';
+            const header = document.createElement('div');
+            header.className = 'ux-panel-header';
+            header.innerHTML = `<i class="${this.icon}"></i><span>${this.label}</span>`;
+            header.addEventListener('click', () => this._stack && this._stack.collapse(this));
+            this._panelEl.appendChild(header);
+            this._contentEl = document.createElement('div');
+            this._contentEl.className = 'ux-panel-content';
+            this._panelEl.appendChild(this._contentEl);
+        }
+        if (!this._mounted) {
+            this.mountContent(this._contentEl);
+            this._mounted = true;
+        }
+        this.onExpanded();
+        return this._panelEl;
+    }
+
+    getButton () {
+        if (!this._btnEl) {
+            this._btnEl = document.createElement('button');
+            this._btnEl.className = 'ux-panel-btn';
+            this._btnEl.innerHTML = `<i class="${this.icon}"></i><span>${this.label}</span>`;
+            this._btnEl.addEventListener('click', () => this._stack && this._stack.expand(this));
+        }
+        return this._btnEl;
+    }
+}
+
+// ── Panneaux ─────────────────────────────────────────────────────────────────
+class PanelBibliotheque extends UXPanel {
+    constructor (chordwizard) {
+        super('bibliotheque', 'Bibliothèque', 'icon-attach-2');
+        this.chordwizard = chordwizard;
+    }
+    mountContent (container) {
+        const favctnr = document.createElement('div');
+        favctnr.id = 'fav-ctnr';
+        container.appendChild(favctnr);
+        this.chordwizard.mountPinBoard(favctnr);
+    }
+}
+
+class PanelCatalogue extends UXPanel {
+    constructor (chordwizard, computedguitar, groundrender, storage) {
+        super('catalogue', 'Catalogue', 'icon-book');
+        this.chordwizard    = chordwizard;
+        this.computedguitar = computedguitar;
+        this.groundrender   = groundrender;
+        this.storage        = storage;
+        this._catalogContent = null;
+    }
+    mountContent (container) {
+        this._catalogContent = document.createElement('div');
+        container.appendChild(this._catalogContent);
+    }
+    onExpanded () {
+        if (!this._catalogContent) return;
+        this.chordwizard.printCatalog(
+            this._catalogContent,
+            (voicing) => {
+                for (let i = 0; i < voicing.frets.length; i++)
+                    this.computedguitar.strings[i].forcehold(voicing.frets[i]);
+                this.groundrender.render();
+            },
+            this.storage
+        );
+    }
+}
+
+class PanelPartitions extends UXPanel {
+    constructor (partitions) {
+        super('partitions', 'Partitions', 'icon-note-beamed');
+        this.partitions = partitions;
+        this._partitionsContent = null;
+    }
+    mountContent (container) {
+        this._partitionsContent = document.createElement('div');
+        this._partitionsContent.id = 'partitions-content';
+        container.appendChild(this._partitionsContent);
+    }
+    onExpanded () {
+        if (this._partitionsContent && !this.partitions._domdest)
+            this.partitions.mount(this._partitionsContent);
+    }
+}
+
+class PanelParametres extends UXPanel {
+    constructor (storage) {
+        super('parametres', 'Paramètres', 'icon-cog-alt');
+        this.storage = storage;
+    }
+    mountContent (container) {
+        const resetBtn = document.createElement('button');
+        resetBtn.className = 'settings-link settings-link--danger';
+        resetBtn.innerHTML = '<i class="icon-trash"></i> Réinitialiser l\'application';
+        resetBtn.addEventListener('click', () => {
+            if (!confirm('Effacer toutes les données et recharger l\'application ?')) return;
+            this.storage.clear();
+            location.reload();
+        });
+        container.appendChild(resetBtn);
+
+        const exportBtn = document.createElement('button');
+        exportBtn.className = 'settings-link';
+        exportBtn.innerHTML = '<i class="icon-doc"></i> Exporter la session';
+        exportBtn.addEventListener('click', () => {
+            const data = this.storage.exportAll();
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'guitarlab-session.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+        container.appendChild(exportBtn);
+
+        const importLabel = document.createElement('label');
+        importLabel.className = 'settings-link';
+        importLabel.innerHTML = '<i class="icon-folder-open-empty"></i> Charger une session';
+        const importInput = document.createElement('input');
+        importInput.type = 'file';
+        importInput.accept = '.json,application/json';
+        importInput.style.display = 'none';
+        importInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                try {
+                    const data = JSON.parse(ev.target.result);
+                    this.storage.importAll(data);
+                    location.reload();
+                } catch { alert('Fichier de session invalide.'); }
+            };
+            reader.readAsText(file);
+            importInput.value = '';
+        });
+        importLabel.appendChild(importInput);
+        container.appendChild(importLabel);
+    }
+}
+
+class PanelReperes extends UXPanel {
+    constructor () {
+        super('notation', 'Notation', 'icon-help');
+    }
+    mountContent (container) {
+        container.id = 'notation-content';
+
+        const INTERVALS = [
+            { key: 'r',  label: 'R',  name: 'Tonique'              },
+            { key: 'b2', label: 'b2', name: '2de mineure'          },
+            { key: '2',  label: '2',  name: '2de majeure'          },
+            { key: 'b3', label: 'b3', name: '3ce mineure'          },
+            { key: '3',  label: '3',  name: '3ce majeure'          },
+            { key: '4',  label: '4',  name: '4te juste'            },
+            { key: 'b5', label: 'b5', name: 'Triton'               },
+            { key: '5',  label: '5',  name: '5te juste'            },
+            { key: 'm5', label: '#5', name: '5te augmentée'        },
+            { key: '6',  label: '6',  name: '6te majeure'          },
+            { key: 'b7', label: 'b7', name: '7ème mineure'         },
+            { key: '7',  label: '7',  name: '7ème majeure'         },
+        ];
+
+        const BADGES = [
+            { sym: '▬', label: 'pas de corde mutée intérieure' },
+            { sym: '▲', label: 'triade stricte (3 cordes consécutives)' },
+            { sym: '△', label: 'triade avec discontinuité' },
+            { sym: '★', label: 'tous les intervalles présents' },
+            { sym: '◇', label: 'aucune note répétée' },
+        ];
+
+        const section = (title) => {
+            const el = document.createElement('div');
+            el.className = 'reperes-section-title';
+            el.textContent = title;
+            container.appendChild(el);
+        };
+
+        // ── intervalles — forme complète ──
+        section('Intervalles — forme complète');
+        const rowFull = document.createElement('div');
+        rowFull.className = 'reperes-row';
+        INTERVALS.forEach(({ key, label, name }) => {
+            const cell = document.createElement('div');
+            cell.className = 'reperes-cell';
+            cell.innerHTML = `<i class="icon-it-${key}"></i><span class="reperes-cell-label">${label}</span><span class="reperes-cell-name">${name}</span>`;
+            rowFull.appendChild(cell);
+        });
+        container.appendChild(rowFull);
+
+        // ── intervalles — forme manche ──
+        section('Intervalles — forme manche');
+        const rowNeck = document.createElement('div');
+        rowNeck.className = 'reperes-row';
+        INTERVALS.forEach(({ key, label }) => {
+            const nkey = key === 'r' ? 'root' : key;
+            const cell = document.createElement('div');
+            cell.className = 'reperes-cell';
+            cell.innerHTML = `<i class="icon-nit-${nkey}"></i><span class="reperes-cell-label">${label}</span>`;
+            rowNeck.appendChild(cell);
+        });
+        container.appendChild(rowNeck);
+
+        // ── qualificatifs de voicing ──
+        section('Qualificatifs de voicing');
+        const badgeList = document.createElement('div');
+        badgeList.className = 'reperes-badges';
+        BADGES.forEach(({ sym, label }) => {
+            const item = document.createElement('div');
+            item.className = 'reperes-badge-item';
+            item.innerHTML = `<span class="reperes-badge-sym">${sym}</span><span class="reperes-badge-label">${label}</span>`;
+            badgeList.appendChild(item);
+        });
+        container.appendChild(badgeList);
+    }
+}
+
+// ── UXStack : gestionnaire de la pile ────────────────────────────────────────
+class UXStack {
+    constructor (storage) {
+        this.storage        = storage;
+        this.panels         = [];
+        this._expandedArea  = null;
+        this._collapsedArea = null;
+    }
+
+    add (panel) {
+        panel._stack = this;
+        this.panels.push(panel);
+    }
+
+    mount (parent) {
+        this._expandedArea = document.createElement('div');
+        this._expandedArea.id = 'ux-expanded';
+        this._collapsedArea = document.createElement('div');
+        this._collapsedArea.id = 'ux-collapsed';
+        parent.appendChild(this._expandedArea);
+        parent.appendChild(this._collapsedArea);
+
+        const saved = this.storage.get('ux-stack', null);
+        if (saved) {
+            const ordered = [];
+            (saved.order || []).forEach(id => {
+                const p = this.panels.find(p => p.id === id);
+                if (p) { p.expanded = saved.states?.[id] ?? false; ordered.push(p); }
+            });
+            this.panels.forEach(p => { if (!ordered.includes(p)) ordered.push(p); });
+            this.panels = ordered;
+        }
+
+        this._render();
+    }
+
+    expand (panel) {
+        panel.expanded = true;
+        this.panels = [panel, ...this.panels.filter(p => p !== panel)];
+        this._save();
+        this._render();
+    }
+
+    collapse (panel) {
+        panel.expanded = false;
+        const expanded  = this.panels.filter(p => p.expanded);
+        const collapsed = this.panels.filter(p => !p.expanded && p !== panel);
+        this.panels = [...expanded, panel, ...collapsed];
+        this._save();
+        this._render();
+    }
+
+    _render () {
+        this._expandedArea.innerHTML = '';
+        this._collapsedArea.innerHTML = '';
+        this.panels.forEach(p => {
+            if (p.expanded) this._expandedArea.appendChild(p.getPanel());
+            else            this._collapsedArea.appendChild(p.getButton());
+        });
+    }
+
+    _save () {
+        this.storage.set('ux-stack', {
+            order:  this.panels.map(p => p.id),
+            states: Object.fromEntries(this.panels.map(p => [p.id, p.expanded]))
+        });
+    }
 }
 
 // la classe application utilisera différentes instances des objets précédents. le lancement complet de l'application intervient a l'appel de son constructeur.
@@ -1886,40 +2216,9 @@ class Application {
         this.ux.id = 'ux';
         this.appbody.appendChild(this.ux);
 
-        const uxbrand = document.createElement('div');
-        uxbrand.id = 'ux-brand';
-        uxbrand.innerHTML = '<i class="icon-sliders"></i> GuitarLab';
-        this.ux.appendChild(uxbrand);
-
         this.onairchord = document.createElement('div');
         this.onairchord.id = 'onair-chord';
         this.ux.appendChild(this.onairchord);
-
-        this.chordlibrary = document.createElement('div');
-        this.chordlibrary.id = 'chord-library';
-        this.ux.appendChild(this.chordlibrary);
-
-        this.pinboarddetails = document.createElement('details');
-        this.pinboarddetails.id = 'pinboard-details';
-        const pinboardsummary = document.createElement('summary');
-        pinboardsummary.innerHTML = '<i class="icon-attach-2"></i> Bibliothèque';
-        this.pinboarddetails.appendChild(pinboardsummary);
-        this.favctnr = document.createElement('div');
-        this.favctnr.id = 'fav-ctnr';
-        this.pinboarddetails.appendChild(this.favctnr);
-        this.chordlibrary.appendChild(this.pinboarddetails);
-
-        // ── restauration + persistance état des panneaux dépliables ──
-        const uxOpen = this.storage.get('ux-open', {});
-        const syncOpen = (el, key) => {
-            if (uxOpen[key] !== undefined) el.open = uxOpen[key];
-            el.addEventListener('toggle', () => {
-                const state = this.storage.get('ux-open', {});
-                state[key] = el.open;
-                this.storage.set('ux-open', state);
-            });
-        };
-        syncOpen(this.pinboarddetails, 'pinboard');
 
         this.neckside = document.createElement('div');
         this.neckside.id = 'neck-side';
@@ -2028,8 +2327,6 @@ class Application {
             (chord) => { for (let i = 0; i < chord.frets.length; i++) this.computedguitar.strings[i].forcehold(chord.frets[i]); this.groundrender.render(); },
             onStateChange
         );
-        this.chordwizard.mountPinBoard(this.favctnr);
-
         // ── restauration on-air ──
         const savedFrets = this.storage.get('onair-frets', null);
         if (savedFrets) {
@@ -2056,42 +2353,7 @@ class Application {
             frets: nfret
         });
 
-        this.catalogdetails = document.createElement('details');
-        this.catalogdetails.id = 'catalog-details';
-        const catalogsummary = document.createElement('summary');
-        catalogsummary.innerHTML = '<i class="icon-book"></i> Catalogue';
-        this.catalogdetails.appendChild(catalogsummary);
-        this.catalogcontent = document.createElement('div');
-        this.catalogdetails.appendChild(this.catalogcontent);
-        this.chordlibrary.appendChild(this.catalogdetails);
-        syncOpen(this.catalogdetails, 'catalog');
-
-        this.catalogdetails.addEventListener('toggle', () => {
-            if (this.catalogdetails.open) {
-                this.chordwizard.printCatalog(
-                    this.catalogcontent,
-                    (voicing) => {
-                        for (let i = 0; i < voicing.frets.length; i++)
-                            this.computedguitar.strings[i].forcehold(voicing.frets[i]);
-                        this.groundrender.render();
-                    },
-                    this.storage
-                );
-            }
-        });
-
         // ── Partitions ────────────────────────────────────────────────────────
-        const partitionsdetails = document.createElement('details');
-        partitionsdetails.id = 'partitions-details';
-        const partitionssummary = document.createElement('summary');
-        partitionssummary.innerHTML = '♩ Partitions';
-        partitionsdetails.appendChild(partitionssummary);
-        const partitionscontent = document.createElement('div');
-        partitionscontent.id = 'partitions-content';
-        partitionsdetails.appendChild(partitionscontent);
-        this.chordlibrary.appendChild(partitionsdetails);
-        syncOpen(partitionsdetails, 'partitions');
-
         this.partitions = new PartitionManager(() => this.computedguitar.strings);
         this.partitions.applyChord = (chord) => {
             for (let i = 0; i < chord.frets.length; i++)
@@ -2106,14 +2368,17 @@ class Application {
         };
 
         const savedPartitions = this.storage.get('partitions', null);
-        if (savedPartitions) this.partitions.data = savedPartitions;  // _domdest null → pas de rendu prématuré
+        if (savedPartitions) this.partitions.data = savedPartitions;
         this.partitions.onStateChange = () => { this.storage.set('partitions', this.partitions.data); };
 
-        partitionsdetails.addEventListener('toggle', () => {
-            if (partitionsdetails.open) {
-                if (!this.partitions._domdest) this.partitions.mount(partitionscontent);
-            }
-        });
+        // ── UXStack ───────────────────────────────────────────────────────────
+        this.uxstack = new UXStack(this.storage);
+        this.uxstack.add(new PanelBibliotheque(this.chordwizard));
+        this.uxstack.add(new PanelCatalogue(this.chordwizard, this.computedguitar, this.groundrender, this.storage));
+        this.uxstack.add(new PanelPartitions(this.partitions));
+        this.uxstack.add(new PanelParametres(this.storage));
+        this.uxstack.add(new PanelReperes());
+        this.uxstack.mount(this.ux);
 
         // PluckPad — flottant déplaçable + dépliable
         const pluckWrap = document.createElement('details');
@@ -2131,6 +2396,16 @@ class Application {
                 pluckWrap.style.left   = p.left;
                 pluckWrap.style.top    = p.top;
                 pluckWrap.style.bottom = 'auto';
+                // Contraindre aux limites du viewport après le rendu
+                requestAnimationFrame(() => {
+                    const r = pluckWrap.getBoundingClientRect();
+                    const maxLeft = window.innerWidth  - r.width;
+                    const maxTop  = window.innerHeight - r.height;
+                    const left = Math.min(Math.max(0, r.left), maxLeft);
+                    const top  = Math.min(Math.max(0, r.top),  maxTop);
+                    pluckWrap.style.left = left + 'px';
+                    pluckWrap.style.top  = top  + 'px';
+                });
             }
         };
         const savePluckPos = () => {
