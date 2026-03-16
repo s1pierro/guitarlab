@@ -1452,12 +1452,50 @@ class ChordWizard {
         render();
     }
 }
+// ── Cadrages prédéfinis ───────────────────────────────────────────────────────
+// pos/target : coordonnées 3D de la caméra / du point visé
+// zone : position horizontale (0..1) du centre de la guitare sur l'écran
+//        0.22 ≈ premier quart gauche (zone libre laissée par l'UX)
+const CAMERA_FRAMES = [
+    {
+        id: 'full',  label: '1–18',
+        pos:    { x: 0.13, y: -0.06, z: 1.55 },
+        target: { x: 0.13, y:  0.06, z: -0.02 },
+        zone: 0.22,
+    },
+    {
+        id: 'open',  label: 'I',
+        pos:    { x: 0.13, y:  0.12, z: 0.88 },
+        target: { x: 0.13, y:  0.24, z: -0.02 },
+        zone: 0.22,
+    },
+    {
+        id: 'pos5',  label: 'V',
+        pos:    { x: 0.13, y: -0.01, z: 0.88 },
+        target: { x: 0.13, y:  0.11, z: -0.02 },
+        zone: 0.22,
+    },
+    {
+        id: 'pos9',  label: 'IX',
+        pos:    { x: 0.13, y: -0.07, z: 0.88 },
+        target: { x: 0.13, y:  0.05, z: -0.02 },
+        zone: 0.22,
+    },
+    {
+        id: 'pos12', label: 'XII',
+        pos:    { x: 0.13, y: -0.15, z: 0.88 },
+        target: { x: 0.13, y: -0.03, z: -0.02 },
+        zone: 0.22,
+    },
+];
+
 class Cameraman {
     constructor (onNeedRender = () => {}, domElement = document.body) {
 
         this.onNeedRender = onNeedRender;
         this.viewRatio = 1.0;
         this.normalisedmouse = {x: 0, y: 0};
+        this._flyRaf = null;
 
         this.camera = new THREE.PerspectiveCamera( 25, window.innerWidth / window.innerHeight, 0.1, 15 );
         this.camera.position.set( 0.13203648995258088, -0.05773723849390569, 1.104895121140156 );
@@ -1504,6 +1542,39 @@ class Cameraman {
         this.controls.target.set(v.target.x, v.target.y, v.target.z);
         this.controls.update();
     }
+    flyTo (frame, durationMs = 550) {
+        if (this._flyRaf) { cancelAnimationFrame(this._flyRaf); this._flyRaf = null; }
+        this.applyZone(frame.zone);
+        const p0 = this.camera.position.clone();
+        const t0 = this.controls.target.clone();
+        const p1 = new THREE.Vector3(frame.pos.x,    frame.pos.y,    frame.pos.z);
+        const t1 = new THREE.Vector3(frame.target.x, frame.target.y, frame.target.z);
+        const t_start = performance.now();
+        const tick = (now) => {
+            const raw  = Math.min((now - t_start) / durationMs, 1);
+            const ease = raw < 0.5 ? 2 * raw * raw : -1 + (4 - 2 * raw) * raw;
+            this.camera.position.lerpVectors(p0, p1, ease);
+            this.controls.target.lerpVectors(t0, t1, ease);
+            this.controls.update();
+            this.onNeedRender();
+            if (raw < 1) this._flyRaf = requestAnimationFrame(tick);
+            else this._flyRaf = null;
+        };
+        this._flyRaf = requestAnimationFrame(tick);
+    }
+
+    applyZone (cx = 0.5) {
+        const W = window.innerWidth, H = window.innerHeight;
+        if (Math.abs(cx - 0.5) < 0.01) {
+            this.camera.clearViewOffset();
+        } else {
+            // cx = position horizontale cible (0..1) du centre scène sur l'écran
+            // setViewOffset décale la projection : offset = (0.5 - cx) * W
+            this.camera.setViewOffset(W, H, Math.round((0.5 - cx) * W), 0, W, H);
+        }
+        this.camera.updateProjectionMatrix();
+    }
+
     onViewChange (cb) {
         this.controls.addEventListener('change', cb);
     }
@@ -1846,9 +1917,11 @@ class GroundRender {
     getScreenCoordinates(obj) {
         return this.cameraman.getScreenCoordinates(obj);
     }
-    getView ()       { return this.cameraman.getView(); }
-    setView (v)      { this.cameraman.setView(v); }
-    onViewChange (cb){ this.cameraman.onViewChange(cb); }
+    getView ()            { return this.cameraman.getView(); }
+    setView (v)           { this.cameraman.setView(v); }
+    onViewChange (cb)     { this.cameraman.onViewChange(cb); }
+    flyTo (frame, ms)     { this.cameraman.flyTo(frame, ms); }
+    applyZone (cx)        { this.cameraman.applyZone(cx); }
     stuffat (mouse) {
         let stuff = { c: null,  object: null };
         const raycaster = new THREE.Raycaster();
@@ -2499,6 +2572,8 @@ class Application {
                     const ov = views[this._orientKey()];
                     if (ov) { this.groundrender.setView(ov); this.groundrender.render(); }
                 });
+                // boutons de cadrage
+                this._buildCameraFrameButtons();
             }
         );
         this.ux = document.createElement('div');
@@ -2737,6 +2812,40 @@ class Application {
 
         this.pluckpad = new PluckPad(this.computedguitar.strings, pluckWrap);
     }
+    _buildCameraFrameButtons () {
+        const strip = document.createElement('div');
+        strip.id = 'cam-frames';
+
+        // bouton "Libre" — restaure la vue utilisateur et annule le zone offset
+        const freeBtn = document.createElement('button');
+        freeBtn.className = 'cam-frame-btn cam-frame-btn--active';
+        freeBtn.textContent = '↺';
+        freeBtn.title = 'Vue libre';
+        freeBtn.addEventListener('click', () => {
+            this.groundrender.applyZone(0.5);
+            const v = this.storage.get('camera-views', {})[this._orientKey()];
+            if (v) { this.groundrender.setView(v); this.groundrender.render(); }
+            strip.querySelectorAll('.cam-frame-btn').forEach(b => b.classList.remove('cam-frame-btn--active'));
+            freeBtn.classList.add('cam-frame-btn--active');
+        });
+        strip.appendChild(freeBtn);
+
+        CAMERA_FRAMES.forEach(frame => {
+            const btn = document.createElement('button');
+            btn.className = 'cam-frame-btn';
+            btn.textContent = frame.label;
+            btn.title = frame.label;
+            btn.addEventListener('click', () => {
+                this.groundrender.flyTo(frame);
+                strip.querySelectorAll('.cam-frame-btn').forEach(b => b.classList.remove('cam-frame-btn--active'));
+                btn.classList.add('cam-frame-btn--active');
+            });
+            strip.appendChild(btn);
+        });
+
+        this.appbody.appendChild(strip);
+    }
+
     start () {
 
     }
