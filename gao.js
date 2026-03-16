@@ -1607,7 +1607,11 @@ class Cameraman {
         const camPos  = new THREE.Vector3(frame.pos.x,    frame.pos.y,    frame.pos.z);
         const viewDir = new THREE.Vector3(frame.target.x, frame.target.y, frame.target.z)
             .sub(camPos).normalize();
-        const right   = new THREE.Vector3().crossVectors(viewDir, this.camera.up).normalize();
+        // right = vecteur droit caméra
+        const right  = new THREE.Vector3().crossVectors(viewDir, this.camera.up).normalize();
+        // camUp = vecteur haut réel de la vue, orthogonal à viewDir
+        // (this.camera.up n'est pas perpendiculaire à viewDir quand la caméra est inclinée)
+        const camUp  = new THREE.Vector3().crossVectors(right, viewDir).normalize();
 
         // Projection manuelle de l'ancre depuis cette position simulée
         const toAnchor = anchor.clone().sub(camPos);
@@ -1615,12 +1619,12 @@ class Cameraman {
         const halfH    = Math.tan(this.camera.fov * Math.PI / 360) * Math.max(depth, 0.01);
         const halfW    = halfH * this.camera.aspect;
         const ndcX     = toAnchor.dot(right) / halfW;
-        const ndcY     = toAnchor.dot(this.camera.up) / halfH;
+        const ndcY     = toAnchor.dot(camUp)  / halfH;  // camUp orthogonal à viewDir
 
         const errX = ndcX - tNdcX;
         const errY = ndcY - tNdcY;
         return right.clone().multiplyScalar(errX * halfW)
-            .addScaledVector(this.camera.up, errY * halfH);
+            .addScaledVector(camUp, errY * halfH);
     }
 
     // Log + overlay post-animation (vérification uniquement, sans mouvement caméra).
