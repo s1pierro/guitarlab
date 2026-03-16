@@ -2130,18 +2130,24 @@ class PanelReperes extends UXPanel {
     }
 }
 
-// ── PanelEcoute : visualiseur micro + égaliseur ──────────────────────────────
+// ── PanelEcoute : visualiseur micro + détection de note ──────────────────────
 class PanelEcoute extends UXPanel {
     constructor () {
         super('ecoute', 'Écoute', 'icon-mic');
-        this._stream    = null;
-        this._audioCtx  = null;
-        this._analyser  = null;
-        this._source    = null;
-        this._rafId     = null;
-        this._active    = false;
-        this._canvas    = null;
-        this._toggleBtn = null;
+        this._stream     = null;
+        this._audioCtx   = null;
+        this._analyser   = null;
+        this._source     = null;
+        this._rafId      = null;
+        this._active     = false;
+        this._canvas     = null;
+        this._toggleBtn  = null;
+        this._noteEl     = null;
+        this._centsEl    = null;
+        this._needleEl   = null;
+        this._timeBuf    = null;
+        this._freqBuf    = null;
+        this._freqHist   = [];   // lissage des dernières fréquences détectées
     }
 
     mountContent (container) {
@@ -2153,6 +2159,27 @@ class PanelEcoute extends UXPanel {
         this._toggleBtn.addEventListener('click', () => this._toggle());
         container.appendChild(this._toggleBtn);
 
+        // affichage note + cents
+        const noteRow = document.createElement('div');
+        noteRow.id = 'ecoute-note';
+        this._noteEl  = document.createElement('span');
+        this._noteEl.className = 'en-note';
+        this._noteEl.textContent = '—';
+        this._centsEl = document.createElement('span');
+        this._centsEl.className = 'en-cents';
+        noteRow.appendChild(this._noteEl);
+        noteRow.appendChild(this._centsEl);
+        container.appendChild(noteRow);
+
+        // aiguille accordeur
+        const needle = document.createElement('div');
+        needle.id = 'ecoute-needle';
+        this._needleEl = document.createElement('div');
+        this._needleEl.id = 'ecoute-needle-cursor';
+        needle.appendChild(this._needleEl);
+        container.appendChild(needle);
+
+        // canvas EQ
         this._canvas = document.createElement('canvas');
         this._canvas.id = 'ecoute-canvas';
         container.appendChild(this._canvas);
@@ -2161,7 +2188,7 @@ class PanelEcoute extends UXPanel {
     onExpanded () {
         if (this._canvas) {
             this._canvas.width  = this._canvas.offsetWidth || 300;
-            this._canvas.height = 72;
+            this._canvas.height = 56;
         }
         if (this._active && !this._rafId) this._draw();
     }
@@ -2180,10 +2207,14 @@ class PanelEcoute extends UXPanel {
             this._stream   = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
             this._audioCtx = new AudioContext();
             this._analyser = this._audioCtx.createAnalyser();
-            this._analyser.fftSize = 128;
+            this._analyser.fftSize         = 2048;
+            this._analyser.smoothingTimeConstant = 0.5;
+            this._timeBuf  = new Float32Array(this._analyser.fftSize);
+            this._freqBuf  = new Uint8Array(this._analyser.frequencyBinCount);
             this._source   = this._audioCtx.createMediaStreamSource(this._stream);
             this._source.connect(this._analyser);
             this._active   = true;
+            this._freqHist = [];
             this._toggleBtn.innerHTML = '<i class="icon-mic"></i><span>Désactiver le micro</span>';
             this._draw();
         } catch (e) {
@@ -2198,7 +2229,12 @@ class PanelEcoute extends UXPanel {
         if (this._stream)   { this._stream.getTracks().forEach(t => t.stop()); this._stream = null; }
         this._analyser = null;
         this._active   = false;
+        this._freqHist = [];
         this._toggleBtn.innerHTML = '<i class="icon-mic"></i><span>Activer le micro</span>';
+        this._noteEl.textContent  = '—';
+        this._centsEl.textContent = '';
+        this._centsEl.className   = 'en-cents';
+        if (this._needleEl) this._needleEl.style.left = '50%';
         if (this._canvas) {
             const ctx = this._canvas.getContext('2d');
             ctx.clearRect(0, 0, this._canvas.width, this._canvas.height);
@@ -2208,21 +2244,98 @@ class PanelEcoute extends UXPanel {
     _draw () {
         if (!this._active || !this._analyser) return;
         this._rafId = requestAnimationFrame(() => this._draw());
+
+        // ── EQ ──────────────────────────────────────────────────────────────
         const canvas = this._canvas;
         const W = canvas.offsetWidth || 300;
         if (canvas.width !== W) canvas.width = W;
-        const H    = canvas.height;
-        const ctx  = canvas.getContext('2d');
-        const data = new Uint8Array(this._analyser.frequencyBinCount);
-        this._analyser.getByteFrequencyData(data);
+        const H   = canvas.height;
+        const ctx = canvas.getContext('2d');
+        this._analyser.getByteFrequencyData(this._freqBuf);
         ctx.clearRect(0, 0, W, H);
-        const barW = W / data.length;
-        for (let i = 0; i < data.length; i++) {
-            const v = data[i] / 255;
+        // affiche les 128 premiers bins (couvre 0 – ~2.8 kHz @ 44100)
+        const bins = Math.min(128, this._freqBuf.length);
+        const barW = W / bins;
+        for (let i = 0; i < bins; i++) {
+            const v = this._freqBuf[i] / 255;
             const h = v * H;
             ctx.fillStyle = `hsla(${200 + v * 40}, 70%, ${30 + v * 35}%, 0.85)`;
             ctx.fillRect(i * barW, H - h, Math.max(barW - 1, 1), h);
         }
+
+        // ── Pitch ────────────────────────────────────────────────────────────
+        this._analyser.getFloatTimeDomainData(this._timeBuf);
+        const freq = this._detectPitch(this._timeBuf, this._audioCtx.sampleRate);
+
+        if (freq > 0) {
+            // lissage : moyenne des 6 dernières valeurs
+            this._freqHist.push(freq);
+            if (this._freqHist.length > 6) this._freqHist.shift();
+            const smoothed = this._freqHist.reduce((a, b) => a + b, 0) / this._freqHist.length;
+            const { name, cents } = this._freqToNote(smoothed);
+            this._noteEl.textContent  = name;
+            const sign = cents >= 0 ? '+' : '';
+            this._centsEl.textContent = `${sign}${cents}¢`;
+            const absCents = Math.abs(cents);
+            this._centsEl.className   = 'en-cents ' + (absCents < 10 ? 'en-cents--good' : absCents < 25 ? 'en-cents--warn' : 'en-cents--bad');
+            // aiguille : 0 cents → 50%, ±50 cents → 0% / 100%
+            const pos = 50 + (cents / 50) * 50;
+            this._needleEl.style.left = `${Math.max(2, Math.min(98, pos))}%`;
+        } else {
+            this._freqHist = [];
+            this._noteEl.textContent  = '—';
+            this._centsEl.textContent = '';
+            this._centsEl.className   = 'en-cents';
+            this._needleEl.style.left = '50%';
+        }
+    }
+
+    _detectPitch (buf, sampleRate) {
+        // vérification silence
+        let rms = 0;
+        for (let i = 0; i < buf.length; i++) rms += buf[i] * buf[i];
+        if (Math.sqrt(rms / buf.length) < 0.015) return -1;
+
+        const half = Math.floor(buf.length / 2);
+        // autocorrélation
+        const corr = new Float32Array(half);
+        for (let lag = 0; lag < half; lag++) {
+            let sum = 0;
+            for (let i = 0; i < half; i++) sum += buf[i] * buf[i + lag];
+            corr[lag] = sum;
+        }
+
+        // sauter le pic initial (lag 0), trouver le premier creux puis le premier pic
+        let d = 1;
+        while (d < half - 1 && corr[d] > corr[d - 1]) d++;
+        while (d < half - 1 && corr[d] < corr[d - 1]) d++;
+        if (d >= half - 1) return -1;
+
+        let maxVal = -Infinity, maxPos = d;
+        for (let i = d; i < half; i++) {
+            if (corr[i] > maxVal) { maxVal = corr[i]; maxPos = i; }
+        }
+
+        // confiance minimale
+        if (corr[0] === 0 || maxVal / corr[0] < 0.5) return -1;
+
+        // interpolation parabolique pour précision sub-sample
+        const y1 = maxPos > 0     ? corr[maxPos - 1] : corr[maxPos];
+        const y2 = corr[maxPos];
+        const y3 = maxPos < half - 1 ? corr[maxPos + 1] : corr[maxPos];
+        const delta = (y3 - y1) / (2 * (2 * y2 - y1 - y3)) || 0;
+
+        return sampleRate / (maxPos + delta);
+    }
+
+    _freqToNote (freq) {
+        const NOTE_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+        const semitones  = 12 * Math.log2(freq / 440) + 57; // 57 = A4 est le 57e demi-ton depuis C0
+        const rounded    = Math.round(semitones);
+        const cents      = Math.round((semitones - rounded) * 100);
+        const octave     = Math.floor(rounded / 12);
+        const name       = NOTE_NAMES[((rounded % 12) + 12) % 12] + octave;
+        return { name, cents };
     }
 }
 
