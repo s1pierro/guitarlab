@@ -1387,22 +1387,6 @@ class ChordWizard {
         spanSel.addEventListener('change', () => { state.maxSpan = parseInt(spanSel.value); saveState(); render(); });
         spanLabel.appendChild(spanSel);
 
-        // nombre de notes
-        const notesLabel = document.createElement('label');
-        notesLabel.textContent = 'notes ';
-        const notesSel = document.createElement('select');
-        [['triade',3,3],['4 notes',4,4],['5 notes',5,5],['toutes',3,6]].forEach(([label, min, max]) => {
-            const o = document.createElement('option');
-            o.value = min + ',' + max; o.textContent = label;
-            if (min === state.minNotes && max === state.maxNotes) o.selected = true;
-            notesSel.appendChild(o);
-        });
-        notesSel.addEventListener('change', () => {
-            [state.minNotes, state.maxNotes] = notesSel.value.split(',').map(Number);
-            saveState(); render();
-        });
-        notesLabel.appendChild(notesSel);
-
         // renversements
         const invLabel = document.createElement('label');
         invLabel.classList.add('catalog-toggle');
@@ -1447,7 +1431,7 @@ class ChordWizard {
         });
         maxFretLabel.appendChild(maxFretSel);
 
-        filters.append(spanLabel, notesLabel, invLabel, minFretLabel, maxFretLabel);
+        filters.append(spanLabel, invLabel, minFretLabel, maxFretLabel);
         domdest.appendChild(rootRow);
         domdest.appendChild(typeRow);
         domdest.appendChild(filters);
