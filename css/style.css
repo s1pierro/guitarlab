@@ -85,16 +85,6 @@
     padding: 0.3em 0.25em;
     gap: 0.25em;
 }
-#ux-brand {
-    padding: 0.5em 0.75em 0.4em;
-    font-size: 0.9em;
-    font-weight: bold;
-    letter-spacing: 0.08em;
-    color: #ffffffcc;
-    text-shadow: 0 0 8px #7c3aed88;
-    border-bottom: 1px solid #ffffff11;
-    flex-shrink: 0;
-}
 #app-stamp {
     position: absolute;
     bottom: 0.6em;
@@ -170,39 +160,27 @@
 .chord-sets-container {
     display: flex;
     flex-direction: column;
-    gap: 0.3em;
-    padding: 0.4em 0.5em;
+    max-height: 16em;
+    overflow-y: auto;
 }
-.chord-set-item {
-    border: 1px solid #ddd;
-    border-radius: 0.4em;
-    overflow: hidden;
-}
-.chord-set-item.active {
-    border-color: #7a9cdf;
-}
+.chord-set-active { flex-shrink: 0; }
 .chord-set-header {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding: 0.3em 0.5em;
-    background: #f4f4f4;
-    cursor: pointer;
+    padding: 0.4em 0.6em;
     user-select: none;
-}
-.chord-set-item.active .chord-set-header {
-    background: #dce8ff;
 }
 .chord-set-name {
     flex: 1;
-    font-size: 0.82em;
-    font-weight: 600;
+    font-size: 0.85em;
+    font-weight: bold;
     outline: none;
     min-width: 0;
     cursor: text;
+    color: #333;
 }
 .chord-set-del {
-    color: #aaa;
+    color: #bbb;
     font-size: 1em;
     line-height: 1;
     padding: 0 0.2em;
@@ -213,20 +191,34 @@
     display: flex;
     flex-wrap: wrap;
     gap: 0.3em;
-    padding: 0.4em 0.5em;
+    padding: 0.2em 0.6em 0.5em;
 }
-.chord-set-add {
-    margin-top: 0.2em;
-    padding: 0.3em 0.6em;
-    font-size: 0.78em;
-    background: none;
-    border: 1px dashed #bbb;
-    border-radius: 0.4em;
-    cursor: pointer;
-    color: #666;
+.chord-sets-collapsed {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4em;
+    padding: 0.4em 0.6em;
+    border-top: 1px solid #e8e8e8;
+    flex-shrink: 0;
+}
+.chord-set-pill {
+    display: flex;
+    align-items: center;
+    gap: 0.3em;
+    padding: 0.25em 0.65em;
+    background: #000000cc;
+    border: none;
+    border-radius: 1em;
     font-family: inherit;
+    font-weight: bold;
+    font-size: 0.82em;
+    color: #fff;
+    cursor: pointer;
+    opacity: 0.75;
+    transition: opacity 0.15s;
 }
-.chord-set-add:active { background: #eee; }
+.chord-set-pill:hover { opacity: 1; }
+.chord-set-pill--add { opacity: 0.45; }
 
 .computed-string-container {
     display: inline-block;
@@ -867,54 +859,55 @@ div.statebar {
 }
 .vc-del:active { color: #e44; }
 
-#catalog-details,
-#pinboard-details,
-#partitions-details {
-    border-top: 1px solid #ddd;
-}
-#catalog-details summary,
-#pinboard-details summary,
-#partitions-details summary {
-    cursor: pointer;
-    padding: 0.5em 0.6em;
-    font-size: 0.85em;
-    font-weight: bold;
-    list-style: none;
-    user-select: none;
-    display: flex;
-    align-items: center;
-    gap: 0.4em;
-}
-#catalog-details summary:hover,
-#pinboard-details summary:hover,
-#partitions-details summary:hover {
-    background: #f0f0f0;
-}
-#catalog-details summary::-webkit-details-marker,
-#pinboard-details summary::-webkit-details-marker,
-#partitions-details summary::-webkit-details-marker { display: none; }
-#catalog-details summary::before,
-#pinboard-details summary::before,
-#partitions-details summary::before {
-    content: '▸';
-    font-size: 0.7em;
-    opacity: 0.5;
-    flex-shrink: 0;
-}
-#catalog-details[open] summary::before,
-#pinboard-details[open] summary::before,
-#partitions-details[open] summary::before {
-    content: '▾';
-}
-
 #onair-chord {
     flex-shrink: 0;
+    padding: 0.6em 0.75em 0.4em;
 }
-#chord-library {
+
+/* ── UXStack ─────────────────────────────────────────────────────────────── */
+#ux-expanded {
     flex: 1;
     overflow-y: auto;
     border-top: 1px solid #e0e0e0;
 }
+#ux-collapsed {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4em;
+    padding: 0.5em 0.6em;
+    border-top: 1px solid #e0e0e0;
+    flex-shrink: 0;
+}
+.ux-panel { border-top: 1px solid #e8e8e8; }
+.ux-panel:first-child { border-top: none; }
+.ux-panel-header {
+    display: flex;
+    align-items: center;
+    gap: 0.4em;
+    padding: 0.5em 0.6em;
+    cursor: pointer;
+    font-size: 0.9em;
+    color: #555;
+    user-select: none;
+}
+.ux-panel-header:hover { color: #222; }
+.ux-panel-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.35em;
+    padding: 0.25em 0.65em;
+    background: #000000cc;
+    border: none;
+    border-radius: 1em;
+    font-family: inherit;
+    font-weight: bold;
+    font-size: 0.82em;
+    color: #fff;
+    cursor: pointer;
+    opacity: 0.75;
+    transition: opacity 0.15s;
+}
+.ux-panel-btn:hover { opacity: 1; }
 
 .catalog-toggle {
     font-size: 0.8em;
@@ -1108,6 +1101,90 @@ div.statebar {
     align-self: center;
 }
 .partition-slot-add:hover { opacity: 0.85; }
+
+/* ─── Paramètres ─────────────────────────────────────────────────────────── */
+.ux-panel-content:has(.settings-link) {
+    display: flex;
+    flex-direction: column;
+    padding: 0.2em 0.75em 0.6em;
+}
+.settings-link {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    padding: 0.35em 0;
+    background: none;
+    border: none;
+    color: #555;
+    font-family: inherit;
+    font-size: 0.9em;
+    cursor: pointer;
+    text-align: left;
+    text-decoration: none;
+    opacity: 0.85;
+    transition: opacity 0.15s, color 0.15s;
+}
+.settings-link:hover { opacity: 1; color: #222; }
+.settings-link--danger { color: #c0392b; }
+.settings-link--danger:hover { color: #a02020; opacity: 1; }
+
+/* ─── Notation ───────────────────────────────────────────────────────────── */
+#notation-content {
+    padding: 0.2em 0.75em 0.75em;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5em;
+}
+.reperes-section-title {
+    font-size: 0.72em;
+    color: #999;
+    letter-spacing: 0.04em;
+    margin-top: 0.4em;
+}
+.reperes-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5em 0.75em;
+}
+.reperes-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.15em;
+    font-size: 1.1em;
+    width: 4.5em;
+    text-align: center;
+}
+.reperes-cell-label {
+    font-size: 0.62em;
+    color: #555;
+    font-weight: bold;
+    letter-spacing: 0.03em;
+}
+.reperes-cell-name {
+    font-size: 0.52em;
+    color: #aaa;
+    line-height: 1.2;
+}
+.reperes-badges {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3em;
+}
+.reperes-badge-item {
+    display: flex;
+    align-items: baseline;
+    gap: 0.6em;
+    font-size: 0.82em;
+}
+.reperes-badge-sym {
+    font-size: 1.1em;
+    width: 1.2em;
+    text-align: center;
+    flex-shrink: 0;
+    color: #444;
+}
+.reperes-badge-label { color: #666; }
 
 /* version stamp */
 .app-version {
