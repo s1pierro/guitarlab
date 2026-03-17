@@ -835,6 +835,10 @@ class PartitionManager {
         // sélecteur de division rythmique
         const divWrap = document.createElement('div');
         divWrap.classList.add('part-div-wrap');
+        const divLabel = document.createElement('span');
+        divLabel.className = 'part-div-label';
+        divLabel.textContent = 'unité';
+        divWrap.appendChild(divLabel);
         ['8n', '16n', '32n'].forEach(div => {
             const btn = document.createElement('button');
             btn.classList.add('part-div-btn');
