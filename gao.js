@@ -3043,7 +3043,7 @@ class Application {
         // catalogue — instrument identique à la guitare virtuelle
         this.chordwizard.setInstrument({
             tuning: stringNames,
-            frets: nfret
+            frets: sguitar.stringdefs[0].nfret
         });
 
         // ── Partitions ────────────────────────────────────────────────────────
