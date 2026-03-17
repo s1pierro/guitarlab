@@ -2905,8 +2905,8 @@ class UXStack {
         this._expandedArea.id = 'ux-expanded';
         this._collapsedArea = document.createElement('div');
         this._collapsedArea.id = 'ux-collapsed';
-        parent.appendChild(this._expandedArea);
         parent.appendChild(this._collapsedArea);
+        parent.appendChild(this._expandedArea);
 
         const saved = this.storage.get('ux-stack', null);
         if (saved) {

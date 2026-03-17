@@ -925,18 +925,18 @@ div.statebar {
 }
 
 /* ── UXStack ─────────────────────────────────────────────────────────────── */
-#ux-expanded {
-    flex: 1;
-    overflow-y: auto;
-    border-top: 1px solid #e0e0e0;
-}
 #ux-collapsed {
     display: flex;
     flex-wrap: wrap;
     gap: 0.4em;
-    padding: 0.5em 0.6em calc(1.5em + env(safe-area-inset-bottom, 0px));
-    border-top: 1px solid #e0e0e0;
+    padding: 0.5em 0.6em;
+    border-bottom: 1px solid #e0e0e0;
     flex-shrink: 0;
+}
+#ux-expanded {
+    flex: 1;
+    overflow-y: auto;
+    padding-bottom: calc(1.5em + env(safe-area-inset-bottom, 0px));
 }
 .ux-panel { border-top: 1px solid #e8e8e8; }
 .ux-panel:first-child { border-top: none; }
