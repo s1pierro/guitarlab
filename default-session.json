@@ -1,5 +1,4 @@
 {
-  "onair-frets": ["x", "0", "2", "2", "1", "0"],
   "ux-stack": {
     "order": ["catalogue", "parametres", "bibliotheque", "partitions", "ecoute", "notation"],
     "states": {
@@ -11,6 +10,7 @@
       "notation": false
     }
   },
+  "onair-frets": ["x", "0", "2", "2", "1", "0"],
   "catalog-filters": {
     "root": "A",
     "chordTypeIndex": 41,
@@ -22,7 +22,7 @@
     "maxFret": 18
   },
   "pluck-pos": {
-    "portrait":  { "rx": 0.89, "ry": 0.94 },
-    "landscape": { "rx": 0.08, "ry": 0.93 }
+    "portrait":  { "rx": 0.5980300283044334, "ry": 0.7472503473562997 },
+    "landscape": { "rx": 0.07894223025044983, "ry": 0.7241221110026042 }
   }
 }
