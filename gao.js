@@ -597,7 +597,7 @@ class PartitionManager {
         this.items = (d.items || []).map(item => {
             const m = _partMigrateItem(item);
             m.chords = (m.chords || []).map(c => ({ ...c, chord: c.chord ? _partReviveChord(c.chord) : null }));
-            // migration boolean → integer pour les patterns sauvegardés avant v1.9.5.2
+            // migration boolean → integer pour les patterns sauvegardés avant v1.9.5.3
             if (m.pattern) m.pattern = m.pattern.map(row => (row || []).map(v => v === true ? 1 : v === false ? 0 : (v || 0)));
             return m;
         });
@@ -2162,7 +2162,7 @@ class GroundRender {
             if (percentComplete < 100) {
                 elem.textContent = Math.round(percentComplete) + ' %';
             } else {
-                elem.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.5.2</span>';
+                elem.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.5.3</span>';
             }
         }
     }
@@ -2909,7 +2909,7 @@ class Application {
         document.body.appendChild (this.appbody);
         this.appstamp = document.createElement('div');
         this.appstamp.id = 'app-stamp';
-        this.appstamp.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.5.2</span>';
+        this.appstamp.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.5.3</span>';
         this.appbody.appendChild (this.appstamp);
 
         this.touchlayer = document.createElement('div');
@@ -3086,29 +3086,30 @@ class Application {
         const applyPluckPos = () => {
             const pos = this.storage.get('pluck-pos', {});
             const p = pos[this._orientKey()];
-            if (p) {
-                pluckWrap.style.left   = p.left;
-                pluckWrap.style.top    = p.top;
+            if (!p) return;
+            requestAnimationFrame(() => {
+                const r = pluckWrap.getBoundingClientRect();
+                // support format normalisé {rx, ry} et legacy {left, top}
+                const rawLeft = p.rx !== undefined ? p.rx * window.innerWidth  : parseFloat(p.left);
+                const rawTop  = p.ry !== undefined ? p.ry * window.innerHeight : parseFloat(p.top);
+                const left = Math.min(Math.max(0, rawLeft), window.innerWidth  - r.width);
+                const top  = Math.min(Math.max(0, rawTop),  window.innerHeight - r.height);
+                pluckWrap.style.left   = left + 'px';
+                pluckWrap.style.top    = top  + 'px';
                 pluckWrap.style.bottom = 'auto';
-                // Contraindre aux limites du viewport après le rendu
-                requestAnimationFrame(() => {
-                    const r = pluckWrap.getBoundingClientRect();
-                    const maxLeft = window.innerWidth  - r.width;
-                    const maxTop  = window.innerHeight - r.height;
-                    const left = Math.min(Math.max(0, r.left), maxLeft);
-                    const top  = Math.min(Math.max(0, r.top),  maxTop);
-                    pluckWrap.style.left = left + 'px';
-                    pluckWrap.style.top  = top  + 'px';
-                });
-            }
+            });
         };
         const savePluckPos = () => {
+            const r = pluckWrap.getBoundingClientRect();
             const pos = this.storage.get('pluck-pos', {});
-            pos[this._orientKey()] = { left: pluckWrap.style.left, top: pluckWrap.style.top };
+            pos[this._orientKey()] = {
+                rx: r.left / window.innerWidth,
+                ry: r.top  / window.innerHeight,
+            };
             this.storage.set('pluck-pos', pos);
         };
         applyPluckPos();
-        window.matchMedia('(orientation: portrait)').addEventListener('change', applyPluckPos);
+        window.matchMedia('(orientation: portrait)').addEventListener('change', () => setTimeout(applyPluckPos, 150));
 
         let dragging = false, dragOx = 0, dragOy = 0;
         pluckSummary.addEventListener('mousedown', (e) => {
@@ -3184,6 +3185,14 @@ class Application {
 document.addEventListener('DOMContentLoaded', async () => {
     const splash = document.getElementById('start');
     const hint   = document.getElementById('start-hint');
+
+    // session par défaut si jamais initialisée
+    if (!localStorage.getItem('guitarlab:ux-stack')) {
+        try {
+            const def = await fetch('default-session.json').then(r => r.json());
+            Object.entries(def).forEach(([k, v]) => localStorage.setItem('guitarlab:' + k, JSON.stringify(v)));
+        } catch {}
+    }
 
     // charge la définition de guitare puis démarre l'app en arrière-plan
     const guitardef = await fetch('guitars/classique-6.json').then(r => r.json());
