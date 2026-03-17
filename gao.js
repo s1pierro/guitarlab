@@ -542,7 +542,7 @@ class PluckPad {
 function _partNew () {
     return {
         id: 'p' + Date.now().toString(36),
-        name: 'Partition 1',
+        name: 'Séquence 1',
         bpm: 120,
         division: '16n',
         length: 4,
@@ -597,7 +597,7 @@ class PartitionManager {
         this.items = (d.items || []).map(item => {
             const m = _partMigrateItem(item);
             m.chords = (m.chords || []).map(c => ({ ...c, chord: c.chord ? _partReviveChord(c.chord) : null }));
-            // migration boolean → integer pour les patterns sauvegardés avant v1.9.4.1
+            // migration boolean → integer pour les patterns sauvegardés avant v1.9.4.2
             if (m.pattern) m.pattern = m.pattern.map(row => (row || []).map(v => v === true ? 1 : v === false ? 0 : (v || 0)));
             return m;
         });
@@ -2162,7 +2162,7 @@ class GroundRender {
             if (percentComplete < 100) {
                 elem.textContent = Math.round(percentComplete) + ' %';
             } else {
-                elem.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.4.1</span>';
+                elem.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.4.2</span>';
             }
         }
     }
@@ -2444,7 +2444,7 @@ class PanelCatalogue extends UXPanel {
 
 class PanelPartitions extends UXPanel {
     constructor (partitions) {
-        super('partitions', 'Partitions', 'icon-note-beamed');
+        super('partitions', 'Séquenceur', 'icon-note-beamed');
         this.partitions = partitions;
         this._partitionsContent = null;
     }
@@ -2908,7 +2908,7 @@ class Application {
         document.body.appendChild (this.appbody);
         this.appstamp = document.createElement('div');
         this.appstamp.id = 'app-stamp';
-        this.appstamp.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.4.1</span>';
+        this.appstamp.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.4.2</span>';
         this.appbody.appendChild (this.appstamp);
 
         this.touchlayer = document.createElement('div');
