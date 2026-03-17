@@ -597,7 +597,7 @@ class PartitionManager {
         this.items = (d.items || []).map(item => {
             const m = _partMigrateItem(item);
             m.chords = (m.chords || []).map(c => ({ ...c, chord: c.chord ? _partReviveChord(c.chord) : null }));
-            // migration boolean → integer pour les patterns sauvegardés avant v1.9.4.7
+            // migration boolean → integer pour les patterns sauvegardés avant v1.9.4.8
             if (m.pattern) m.pattern = m.pattern.map(row => (row || []).map(v => v === true ? 1 : v === false ? 0 : (v || 0)));
             return m;
         });
@@ -2162,7 +2162,7 @@ class GroundRender {
             if (percentComplete < 100) {
                 elem.textContent = Math.round(percentComplete) + ' %';
             } else {
-                elem.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.4.7</span>';
+                elem.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.4.8</span>';
             }
         }
     }
@@ -2908,7 +2908,7 @@ class Application {
         document.body.appendChild (this.appbody);
         this.appstamp = document.createElement('div');
         this.appstamp.id = 'app-stamp';
-        this.appstamp.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.4.7</span>';
+        this.appstamp.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.4.8</span>';
         this.appbody.appendChild (this.appstamp);
 
         this.touchlayer = document.createElement('div');
@@ -3086,24 +3086,23 @@ class Application {
             const pos = this.storage.get('pluck-pos', {});
             const p = pos[this._orientKey()];
             if (p) {
-                pluckWrap.style.left   = p.left;
-                pluckWrap.style.top    = p.top;
-                pluckWrap.style.bottom = 'auto';
-                // Contraindre aux limites du viewport après le rendu
                 requestAnimationFrame(() => {
                     const r = pluckWrap.getBoundingClientRect();
-                    const maxLeft = window.innerWidth  - r.width;
-                    const maxTop  = window.innerHeight - r.height;
-                    const left = Math.min(Math.max(0, r.left), maxLeft);
-                    const top  = Math.min(Math.max(0, r.top),  maxTop);
-                    pluckWrap.style.left = left + 'px';
-                    pluckWrap.style.top  = top  + 'px';
+                    const left = Math.min(Math.max(0, p.rx * window.innerWidth),  window.innerWidth  - r.width);
+                    const top  = Math.min(Math.max(0, p.ry * window.innerHeight), window.innerHeight - r.height);
+                    pluckWrap.style.left   = left + 'px';
+                    pluckWrap.style.top    = top  + 'px';
+                    pluckWrap.style.bottom = 'auto';
                 });
             }
         };
         const savePluckPos = () => {
+            const r = pluckWrap.getBoundingClientRect();
             const pos = this.storage.get('pluck-pos', {});
-            pos[this._orientKey()] = { left: pluckWrap.style.left, top: pluckWrap.style.top };
+            pos[this._orientKey()] = {
+                rx: r.left / window.innerWidth,
+                ry: r.top  / window.innerHeight,
+            };
             this.storage.set('pluck-pos', pos);
         };
         applyPluckPos();
