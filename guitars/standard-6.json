@@ -1,0 +1,44 @@
+{
+    "name": "standard-6",
+    "label": "Guitare standard 6 cordes",
+    "wavefront": "gao-beta-6.obj",
+    "material": "gao-beta-6.mtl",
+    "stringdefs": [
+        {
+            "pitch": "E2", "thickness": 0.80, "nfret": 18,
+            "neckxyz": { "x": -0.021849, "y":  0.326, "z": 0.000887 },
+            "topxyz":  { "x": -0.024034, "y": -0.326, "z": 0.005246 },
+            "partials": [0.8, 0.2, 0.1, 0.05, 0.025]
+        },
+        {
+            "pitch": "A2", "thickness": 0.75, "nfret": 18,
+            "neckxyz": { "x": -0.013318, "y":  0.326, "z": 0.000887 },
+            "topxyz":  { "x": -0.014650, "y": -0.326, "z": 0.005246 },
+            "partials": [0.8, 0.2, 0.1, 0.05, 0.025]
+        },
+        {
+            "pitch": "D3", "thickness": 0.70, "nfret": 18,
+            "neckxyz": { "x": -0.004787, "y":  0.326, "z": 0.000887 },
+            "topxyz":  { "x": -0.005266, "y": -0.326, "z": 0.005246 },
+            "partials": [0.8, 0.2, 0.1, 0.05]
+        },
+        {
+            "pitch": "G3", "thickness": 0.65, "nfret": 18,
+            "neckxyz": { "x":  0.003744, "y":  0.326, "z": 0.000887 },
+            "topxyz":  { "x":  0.004118, "y": -0.326, "z": 0.005246 },
+            "partials": [0.8, 0.2, 0.1]
+        },
+        {
+            "pitch": "B3", "thickness": 0.55, "nfret": 18,
+            "neckxyz": { "x":  0.012276, "y":  0.326, "z": 0.000887 },
+            "topxyz":  { "x":  0.013504, "y": -0.326, "z": 0.005246 },
+            "partials": [0.8, 0.2]
+        },
+        {
+            "pitch": "E4", "thickness": 0.50, "nfret": 18,
+            "neckxyz": { "x":  0.020806, "y":  0.326, "z": 0.000887 },
+            "topxyz":  { "x":  0.022887, "y": -0.326, "z": 0.005246 },
+            "partials": [0.8, 0.2]
+        }
+    ]
+}

@@ -597,7 +597,7 @@ class PartitionManager {
         this.items = (d.items || []).map(item => {
             const m = _partMigrateItem(item);
             m.chords = (m.chords || []).map(c => ({ ...c, chord: c.chord ? _partReviveChord(c.chord) : null }));
-            // migration boolean → integer pour les patterns sauvegardés avant v1.9.4.4
+            // migration boolean → integer pour les patterns sauvegardés avant v1.9.4.6
             if (m.pattern) m.pattern = m.pattern.map(row => (row || []).map(v => v === true ? 1 : v === false ? 0 : (v || 0)));
             return m;
         });
@@ -2163,7 +2163,7 @@ class GroundRender {
             if (percentComplete < 100) {
                 elem.textContent = Math.round(percentComplete) + ' %';
             } else {
-                elem.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.4.4</span>';
+                elem.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.4.6</span>';
             }
         }
     }
@@ -2901,7 +2901,8 @@ class UXStack {
 
 // la classe application utilisera différentes instances des objets précédents. le lancement complet de l'application intervient a l'appel de son constructeur.
 class Application {
-  constructor (onReady = () => {}) {
+  constructor (onReady = () => {}, guitardef = null) {
+        this._guitardef = guitardef;
         this.storage = new AppStorage();
         this._orientKey = () => window.matchMedia('(orientation: portrait)').matches ? 'portrait' : 'landscape';
         this.appbody = document.createElement('div');
@@ -2909,7 +2910,7 @@ class Application {
         document.body.appendChild (this.appbody);
         this.appstamp = document.createElement('div');
         this.appstamp.id = 'app-stamp';
-        this.appstamp.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.4.4</span>';
+        this.appstamp.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.4.6</span>';
         this.appbody.appendChild (this.appstamp);
 
         this.touchlayer = document.createElement('div');
@@ -2994,53 +2995,7 @@ class Application {
             this.computedguitar.strum(clickPercentage-50);
         }, true);
 
-        let wideness = 1.1;
-        let nfret = 18;
-        let sguitar = {
-            wavefront:'gao-beta-6.obj',
-            material:'gao-beta-6.mtl',
-
-            stringdefs: [
-                {
-                    pitch: 'E2', thickness: 0.80, nfret: nfret,
-                    neckxyz: {x: -0.021849, y: 0.326, z: 0.000887},
-                    topxyz: {x: -0.021849*wideness, y: -0.326, z: 0.005246},
-                    partials: [0.8, 0.2, 0.1, 0.05, 0.025]
-                },
-                {
-                    pitch: 'A2', thickness: 0.75, nfret: nfret,
-                    neckxyz: {x: -0.013318, y: 0.326, z: 0.000887},
-                    topxyz: {x: -0.013318*wideness, y: -0.326, z: 0.005246},
-                    partials: [0.8, 0.2, 0.1, 0.05, 0.025]
-                },
-                {
-                    pitch: 'D3', thickness: 0.70, nfret: nfret,
-                    neckxyz: {x: -0.004787, y: 0.326, z: 0.000887},
-                    topxyz: {x: -0.004787*wideness, y: -0.326, z: 0.005246},
-                    partials: [0.8, 0.2, 0.1, 0.05]
-                },
-                {
-                    pitch: 'G3', thickness: 0.65, nfret: nfret,
-                    neckxyz: {x: 0.003744, y: 0.326, z: 0.000887},
-                    topxyz: {x: 0.003744*wideness, y: -0.326, z: 0.005246},
-                    partials: [0.8, 0.2, 0.1]
-                },
-                {
-                    pitch: 'B3', thickness: 0.55, nfret: nfret,
-                    neckxyz: {x: 0.012276, y: 0.326, z: 0.000887},
-                    topxyz: {x: 0.012276*wideness, y: -0.326, z: 0.005246},
-                    partials: [0.8, 0.2]
-                },
-                {
-                    pitch: 'E4', thickness: 0.5, nfret: nfret,
-                    neckxyz: {x: 0.020806, y: 0.326, z: 0.000887},
-                    topxyz: {x: 0.020806*wideness, y: -0.326, z: 0.005246},
-                    partials: [0.8, 0.2]
-                }
-            ],
-            name: 's1g'
-
-        };
+        const sguitar = this._guitardef;
         const stringNames = sguitar.stringdefs.map(d => d.pitch);
         const onStateChange = () => {
             const heldNotes = this.model.getholdedstrings();
@@ -3227,14 +3182,15 @@ class Application {
     }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     const splash = document.getElementById('start');
     const hint   = document.getElementById('start-hint');
 
-    // charge l'app immédiatement en arrière-plan
+    // charge la définition de guitare puis démarre l'app en arrière-plan
+    const guitardef = await fetch('guitars/standard-6.json').then(r => r.json());
     window.application = new Application(() => {
         hint.classList.add('ready');
-    });
+    }, guitardef);
 
     splash.addEventListener('click', () => {
         Tone.start();
