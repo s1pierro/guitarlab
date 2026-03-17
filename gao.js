@@ -865,7 +865,7 @@ class PartitionManager {
         durBar.classList.add('part-dur-bar');
         const durLabel = document.createElement('span');
         durLabel.className = 'part-dur-label';
-        durLabel.textContent = 'durée';
+        durLabel.innerHTML = '<i class="icon-plus"></i> durée';
         durBar.appendChild(durLabel);
         [1, 2, 4, 8].forEach(d => {
             const btn = document.createElement('button');
