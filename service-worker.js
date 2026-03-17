@@ -1,6 +1,6 @@
 // Service Worker pour la mise en cache des ressources de l'application
 
-const cacheName = 'gao-1.3';
+const cacheName = 'gao-1.4';
 
 // Seuls les assets statiques lourds sont mis en cache (audio, images)
 const cacheFiles = [
@@ -34,8 +34,8 @@ self.addEventListener('fetch', function (event) {
   const noCache = noCacheExtensions.some(ext => url.pathname.endsWith(ext));
 
   if (noCache) {
-    // Toujours réseau pour HTML / JS / CSS / JSON
-    event.respondWith(fetch(event.request));
+    // Toujours réseau pour HTML / JS / CSS / JSON, sans cache HTTP navigateur
+    event.respondWith(fetch(event.request, { cache: 'no-store' }));
     return;
   }
 
