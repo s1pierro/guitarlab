@@ -13,7 +13,7 @@
   "onair-frets": ["x", "0", "2", "2", "1", "0"],
   "catalog-filters": {
     "root": "A",
-    "chordTypeIndex": 41,
+    "chordTypeIndex": 3,
     "maxSpan": 3,
     "minNotes": 3,
     "maxNotes": 6,
