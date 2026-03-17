@@ -1,6 +1,6 @@
 // Service Worker pour la mise en cache des ressources de l'application
 
-const cacheName = 'gao-1.2';
+const cacheName = 'gao-1.3';
 
 // Seuls les assets statiques lourds sont mis en cache (audio, images)
 const cacheFiles = [
