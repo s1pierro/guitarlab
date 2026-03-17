@@ -863,6 +863,10 @@ class PartitionManager {
         // ── barre de sélection de durée ──
         const durBar = document.createElement('div');
         durBar.classList.add('part-dur-bar');
+        const durLabel = document.createElement('span');
+        durLabel.className = 'part-dur-label';
+        durLabel.textContent = 'durée';
+        durBar.appendChild(durLabel);
         [1, 2, 4, 8].forEach(d => {
             const btn = document.createElement('button');
             btn.classList.add('part-dur-btn');
