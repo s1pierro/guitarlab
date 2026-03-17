@@ -3187,7 +3187,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const hint   = document.getElementById('start-hint');
 
     // charge la définition de guitare puis démarre l'app en arrière-plan
-    const guitardef = await fetch('guitars/standard-6.json').then(r => r.json());
+    const guitardef = await fetch('guitars/classique-6.json').then(r => r.json());
     window.application = new Application(() => {
         hint.classList.add('ready');
     }, guitardef);

@@ -1,6 +1,6 @@
 {
-    "name": "standard-6",
-    "label": "Guitare standard 6 cordes",
+    "name": "classique-6",
+    "label": "Guitare classique 6 cordes",
     "wavefront": "gao-beta-6.obj",
     "material": "gao-beta-6.mtl",
     "stringdefs": [
