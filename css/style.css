@@ -63,7 +63,7 @@
     position: absolute;
     z-index: 50;
     left: 0.5em;
-    bottom: calc(0.5em + env(safe-area-inset-bottom, 0px));
+    bottom: calc(1.5em + env(safe-area-inset-bottom, 0px));
     background: #000a;
     border-radius: 0.5em;
     overflow: hidden;
@@ -934,7 +934,7 @@ div.statebar {
     display: flex;
     flex-wrap: wrap;
     gap: 0.4em;
-    padding: 0.5em 0.6em;
+    padding: 0.5em 0.6em calc(1.5em + env(safe-area-inset-bottom, 0px));
     border-top: 1px solid #e0e0e0;
     flex-shrink: 0;
 }
