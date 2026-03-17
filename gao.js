@@ -597,7 +597,7 @@ class PartitionManager {
         this.items = (d.items || []).map(item => {
             const m = _partMigrateItem(item);
             m.chords = (m.chords || []).map(c => ({ ...c, chord: c.chord ? _partReviveChord(c.chord) : null }));
-            // migration boolean → integer pour les patterns sauvegardés avant v1.9.5.6
+            // migration boolean → integer pour les patterns sauvegardés avant v1.9.5.7
             if (m.pattern) m.pattern = m.pattern.map(row => (row || []).map(v => v === true ? 1 : v === false ? 0 : (v || 0)));
             return m;
         });
@@ -2218,7 +2218,7 @@ class GroundRender {
             if (percentComplete < 100) {
                 elem.textContent = Math.round(percentComplete) + ' %';
             } else {
-                elem.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.5.6</span>';
+                elem.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.5.7</span>';
             }
         }
     }
@@ -2517,12 +2517,38 @@ class PanelPartitions extends UXPanel {
     }
 }
 
-class PanelParametres extends UXPanel {
+class ConfigOverlay {
     constructor (storage) {
-        super('parametres', 'Paramètres', 'icon-cog-alt');
         this.storage = storage;
+        this._el = null;
     }
-    mountContent (container) {
+
+    mount (parent) {
+        const el = document.createElement('div');
+        el.id = 'config-overlay';
+        el.classList.add('hidden');
+
+        // ── icône ──
+        const icon = document.createElement('img');
+        icon.src = 'assets/icon.svg';
+        icon.className = 'config-overlay-icon';
+
+        // ── fermer ──
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'config-overlay-close';
+        closeBtn.textContent = '×';
+        closeBtn.addEventListener('click', () => this.close());
+
+        // ── contenu ──
+        const card = document.createElement('div');
+        card.className = 'config-overlay-card';
+
+        // section Paramètres
+        const secTitle = document.createElement('div');
+        secTitle.className = 'config-section-title';
+        secTitle.innerHTML = '<i class="icon-cog-alt"></i> Paramètres';
+        card.appendChild(secTitle);
+
         const resetBtn = document.createElement('button');
         resetBtn.className = 'settings-link settings-link--danger';
         resetBtn.innerHTML = '<i class="icon-trash"></i> Réinitialiser l\'application';
@@ -2531,34 +2557,30 @@ class PanelParametres extends UXPanel {
             this.storage.clear();
             location.reload();
         });
-        container.appendChild(resetBtn);
+        card.appendChild(resetBtn);
 
         const exportBtn = document.createElement('button');
         exportBtn.className = 'settings-link';
         exportBtn.innerHTML = '<i class="icon-doc"></i> Exporter la session';
         exportBtn.addEventListener('click', () => {
-            if (this._stack) this._stack.collapse(this);
+            this.close();
             const data = this.storage.exportAll(['partitions']);
             const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
-            a.href = url;
-            a.download = 'guitarlab-session.json';
-            a.click();
+            a.href = url; a.download = 'guitarlab-session.json'; a.click();
             URL.revokeObjectURL(url);
         });
-        container.appendChild(exportBtn);
+        card.appendChild(exportBtn);
 
         const importLabel = document.createElement('label');
         importLabel.className = 'settings-link';
         importLabel.innerHTML = '<i class="icon-folder-open-empty"></i> Charger une session';
         const importInput = document.createElement('input');
-        importInput.type = 'file';
-        importInput.accept = '.json,application/json';
+        importInput.type = 'file'; importInput.accept = '.json,application/json';
         importInput.style.display = 'none';
         importInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
+            const file = e.target.files[0]; if (!file) return;
             const reader = new FileReader();
             reader.onload = (ev) => {
                 try {
@@ -2567,12 +2589,30 @@ class PanelParametres extends UXPanel {
                     location.reload();
                 } catch { alert('Fichier de session invalide.'); }
             };
-            reader.readAsText(file);
-            importInput.value = '';
+            reader.readAsText(file); importInput.value = '';
         });
         importLabel.appendChild(importInput);
-        container.appendChild(importLabel);
+        card.appendChild(importLabel);
+
+        // section À propos (placeholder)
+        const aboutTitle = document.createElement('div');
+        aboutTitle.className = 'config-section-title';
+        aboutTitle.innerHTML = '<i class="icon-info"></i> À propos';
+        card.appendChild(aboutTitle);
+
+        const aboutText = document.createElement('p');
+        aboutText.className = 'config-about-text';
+        aboutText.textContent = 'GuitarLab — exploration de la théorie musicale à la guitare.';
+        card.appendChild(aboutText);
+
+        el.append(icon, closeBtn, card);
+        el.addEventListener('click', (e) => { if (e.target === el) this.close(); });
+        parent.appendChild(el);
+        this._el = el;
     }
+
+    open ()  { this._el?.classList.remove('hidden'); }
+    close () { this._el?.classList.add('hidden'); }
 }
 
 class PanelReperes extends UXPanel {
@@ -2967,8 +3007,13 @@ class Application {
         document.body.appendChild (this.appbody);
         this.appstamp = document.createElement('div');
         this.appstamp.id = 'app-stamp';
-        this.appstamp.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.5.6</span>';
-        this.appbody.appendChild (this.appstamp);
+        this.appstamp.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.5.7</span>';
+        this.appbody.appendChild(this.appstamp);
+
+        this.configOverlay = new ConfigOverlay(this.storage);
+        this.configOverlay.mount(this.appbody);
+        this.appstamp.style.cursor = 'pointer';
+        this.appstamp.addEventListener('click', () => this.configOverlay.open());
 
         this.touchlayer = document.createElement('div');
         this.touchlayer.id = 'touch-layer';
@@ -3128,7 +3173,6 @@ class Application {
         this.uxstack.add(new PanelCatalogue(this.chordwizard, this.computedguitar, this.groundrender, this.storage));
         this.uxstack.add(new PanelPartitions(this.partitions));
         this.uxstack.add(new PanelEcoute());
-        this.uxstack.add(new PanelParametres(this.storage));
         this.uxstack.add(new PanelReperes());
         this.uxstack.mount(this.ux);
 
