@@ -2594,7 +2594,7 @@ class PanelReperes extends UXPanel {
 // ── PanelEcoute : visualiseur micro + détection de note ──────────────────────
 class PanelEcoute extends UXPanel {
     constructor () {
-        super('ecoute', 'Accordeur', 'icon-mic', 'Flash accordeur');
+        super('ecoute', 'Accordeur', 'icon-mic', 'Accordeur');
         this._stream     = null;
         this._audioCtx   = null;
         this._analyser   = null;
