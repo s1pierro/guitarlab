@@ -7,3 +7,10 @@ original.sgm
 
 # Config locale Claude Code
 .claude/
+
+# Fichiers locaux hors dépôt
+assets/Screenshot_*.png
+*.jpg
+wood-raw-spruce.png
+guitarlab-default-session.json
+LICENSE.txt
