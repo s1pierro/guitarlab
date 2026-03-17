@@ -597,7 +597,7 @@ class PartitionManager {
         this.items = (d.items || []).map(item => {
             const m = _partMigrateItem(item);
             m.chords = (m.chords || []).map(c => ({ ...c, chord: c.chord ? _partReviveChord(c.chord) : null }));
-            // migration boolean → integer pour les patterns sauvegardés avant v1.9.4.0
+            // migration boolean → integer pour les patterns sauvegardés avant v1.9.4.1
             if (m.pattern) m.pattern = m.pattern.map(row => (row || []).map(v => v === true ? 1 : v === false ? 0 : (v || 0)));
             return m;
         });
@@ -2162,20 +2162,23 @@ class GroundRender {
             if (percentComplete < 100) {
                 elem.textContent = Math.round(percentComplete) + ' %';
             } else {
-                elem.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.4.0</span>';
+                elem.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.4.1</span>';
             }
         }
     }
     onError ( xhr ) {
     }
     onWindowResize() {
-        this.cameraman.resize( window.innerWidth, window.innerHeight );
-        this.renderer.setSize( window.innerWidth, window.innerHeight * this.cameraman.viewRatio );
-        // Si un cadrage est actif, recalculer l'alignement pour le nouvel aspect ratio
-        if (this.cameraman._activeFrame) {
-            this.cameraman.flyTo(this.cameraman._activeFrame, 0, this.cameraman._activeStrings);
-        }
-        this.render();
+        // Différer pour laisser le navigateur finaliser les dimensions après rotation
+        clearTimeout(this._resizeTimer);
+        this._resizeTimer = setTimeout(() => {
+            this.cameraman.resize( window.innerWidth, window.innerHeight );
+            this.renderer.setSize( window.innerWidth, window.innerHeight * this.cameraman.viewRatio );
+            if (this.cameraman._activeFrame) {
+                this.cameraman.flyTo(this.cameraman._activeFrame, 0, this.cameraman._activeStrings);
+            }
+            this.render();
+        }, 150);
     }
     render() {
         this.cameraman.update();
@@ -2905,7 +2908,7 @@ class Application {
         document.body.appendChild (this.appbody);
         this.appstamp = document.createElement('div');
         this.appstamp.id = 'app-stamp';
-        this.appstamp.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.4.0</span>';
+        this.appstamp.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.4.1</span>';
         this.appbody.appendChild (this.appstamp);
 
         this.touchlayer = document.createElement('div');
