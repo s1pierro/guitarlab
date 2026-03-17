@@ -1,49 +1,91 @@
 # GuitarLab
 
-A guitar-oriented tool to explore music theory. Interactive 3D guitar neck rendered with Three.js, chord recognition, and audio playback — packaged as an installable PWA.
+Application web pour l'exploration de la théorie musicale à la guitare. Manche 3D interactif rendu avec Three.js, reconnaissance d'accords en temps réel, séquenceur, accordeur micro — packagée en PWA installable.
 
-**Live app:** https://s1pierro.github.io/guitarlab/
+**Application :** https://s1pierro.github.io/guitarlab/
 
-## Features
+---
 
-- Interactive 3D guitar neck (Three.js + OBJ model)
-- Real-time chord recognition from fretted notes
-- Chord library with fingering suggestions
-- Interval visualization on the neck
-- Audio synthesis via Tone.js (sampled strings)
-- Installable as a PWA (works offline)
+## Fonctionnalités
+
+- **Manche 3D interactif** — Three.js, modèle OBJ, raycasting par frette et par corde
+- **Reconnaissance d'accords en temps réel** — scoring sur 50+ types d'accords, affichage des intervalles sur le manche
+- **Catalogue de voicings** — filtres par tonique, qualité, écart, nombre de cordes, position
+- **Bibliothèque d'accords** — sauvegarde en sets nommés, navigation par pastilles
+- **Séquenceur** — piste d'accords + grille de picking 6×N, durées variables [1 2 4 8], lecture avec Tone.js
+- **Accordeur** — détection de pitch par autocorrélation (micro), visualiseur à aiguille graduée
+- **Cameraman** — cadrages automatiques du manche (full, I, V, IX, XII), recalcul au resize/orientation
+- **Synthèse audio** — échantillons de cordes par Tone.js, strumming, PluckPad tactile
+- **Définition de guitare externalisée** — modèle, accordage et géométrie dans `guitars/*.json`
+- **PWA** — installable, fonctionne hors ligne
+
+---
 
 ## Architecture
 
-| File | Role |
+Aucune étape de build. Vanilla JS servi directement depuis ce répertoire.
+
+| Fichier | Rôle |
 |---|---|
-| `gao.js` | Main application — all classes |
-| `music-theory.js` | Music data: notes, intervals, chord types, `Chord` class |
-| `index.html` | Bootstrap, sequential script loading |
-| `service-worker.js` | PWA cache |
+| `gao.js` | Application principale — toutes les classes |
+| `music-theory.js` | Données musicales : notes, intervalles, 50+ types d'accords |
+| `index.html` | Bootstrap, chargement séquentiel des scripts |
+| `service-worker.js` | Cache PWA |
+| `guitars/classique-6.json` | Définition de la guitare (accordage, géométrie 3D, synthèse) |
 
-**Key classes in `gao.js`:**
+**Hiérarchie principale dans `gao.js` :**
 
-- `Application` — entry point, wires everything together
-- `GuitarModel` — single source of truth for fret state (`holds[]`)
-- `GroundRender` — Three.js scene, renderer, animation loop
-- `Cameraman` — camera, OrbitControls, mouse/touch events
-- `ComputedGuitar` / `ComputedString` — fret click handling, audio trigger
-- `ChordGuesser` — identifies chord from current fret state
-- `ChordPinBoard` — chord library UI
-
-## Running locally
-
-Serve the root directory with any static HTTP server (direct `file://` access won't work due to service worker and module loading):
-
-```bash
-npx serve .
-# or
-python3 -m http.server 8080
+```
+Application
+├── AppStorage             — persistance localStorage
+├── GuitarModel            — état des frettes (source de vérité)
+├── GroundRender           — rendu Three.js
+│   └── Cameraman          — caméra, OrbitControls, cadrages automatiques
+├── ComputedGuitar         — agrégateur des cordes
+│   └── ComputedString ×N  — corde individuelle (DOM + audio Tone.js)
+├── ChordWizard            — analyse, catalogue, favoris
+│   └── ChordPinBoard      — sets d'accords favoris
+├── PartitionManager       — séquenceur multi-séquences
+├── UXStack                — pile de panneaux expand/collapse
+│   ├── PanelBibliotheque
+│   ├── PanelCatalogue
+│   ├── PanelPartitions    — séquenceur
+│   ├── PanelEcoute        — accordeur
+│   ├── PanelParametres
+│   └── PanelNotation
+└── PluckPad               — pad tactile flottant
 ```
 
-Then open `http://localhost:8080`.
+Documentation détaillée : [`ARCHITECTURE.md`](ARCHITECTURE.md) · [`DESIGN.md`](DESIGN.md)
 
-## No build step
+---
 
-Vanilla JS, no npm, no bundler. Edit files and refresh.
+## Lancer l'application
+
+Servir ce répertoire avec n'importe quel serveur HTTP statique (l'accès direct `file://` ne fonctionne pas — service worker et chargement de modules) :
+
+```bash
+python3 -m http.server 8080
+# ou
+npx serve .
+```
+
+Puis ouvrir `http://localhost:8080`.
+
+Le contexte audio (Tone.js) nécessite une interaction utilisateur pour s'initialiser — c'est une contrainte navigateur, pas un bug.
+
+---
+
+## Ajouter un modèle de guitare
+
+La définition de l'instrument est externalisée dans `guitars/classique-6.json`. Pour créer un nouveau modèle (7 cordes, accordage alternatif, etc.) :
+
+→ Voir [`docs/ajouter-un-modele-guitare.md`](docs/ajouter-un-modele-guitare.md)
+
+---
+
+## Licence
+
+Usage non commercial — voir [`LICENSE`](LICENSE).
+
+Copyright © Thomas Saint Pierre (s1pierro / saintpierro) & Claude Sonnet 4.6 (Anthropic)
