@@ -752,12 +752,7 @@ div.statebar {
 
 }
 /* ── Catalog ─────────────────────────────────────────────── */
-.catalog-header {
-    font-weight: bold;
-    font-size: 1em;
-    padding: 0.4em 0.5em;
-    color: #333;
-}
+.catalog-header { display: none; }
 .catalog-section-title {
     font-weight: bold;
     font-size: 0.95em;
@@ -807,17 +802,17 @@ div.statebar {
 .catalog-pill {
     font-size: 0.78em;
     padding: 0.2em 0.45em;
-    border-radius: 0.35em;
-    border: 1px solid transparent;
+    border-radius: 1em;
+    border: none;
     color: #888;
     cursor: pointer;
     user-select: none;
-    transition: color 0.1s, border-color 0.1s;
+    transition: background 0.1s, color 0.1s;
 }
 .catalog-pill:hover { color: #333; }
 .catalog-pill--active {
-    border-color: #555;
-    color: #111;
+    background: #000000cc;
+    color: #fff;
     font-weight: 600;
 }
 .catalog-filters {
