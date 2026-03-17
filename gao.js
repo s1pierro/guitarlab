@@ -850,7 +850,7 @@ class PartitionManager {
         ['8n', '16n', '32n'].forEach(div => {
             const btn = document.createElement('button');
             btn.classList.add('part-div-btn');
-            btn.textContent = div === '8n' ? '1\\8' : div === '16n' ? '1\\16' : '1\\32';
+            btn.textContent = div === '8n' ? '1/8' : div === '16n' ? '1/16' : '1/32';
             btn.classList.toggle('active', p.division === div);
             btn.addEventListener('click', () => {
                 p.division = div;
