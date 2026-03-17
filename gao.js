@@ -597,7 +597,7 @@ class PartitionManager {
         this.items = (d.items || []).map(item => {
             const m = _partMigrateItem(item);
             m.chords = (m.chords || []).map(c => ({ ...c, chord: c.chord ? _partReviveChord(c.chord) : null }));
-            // migration boolean → integer pour les patterns sauvegardés avant v1.9.4.2
+            // migration boolean → integer pour les patterns sauvegardés avant v1.9.4.3
             if (m.pattern) m.pattern = m.pattern.map(row => (row || []).map(v => v === true ? 1 : v === false ? 0 : (v || 0)));
             return m;
         });
@@ -845,13 +845,6 @@ class PartitionManager {
             divWrap.appendChild(btn);
         });
 
-        controls.append(nameWrap, bpmWrap, this._playBtn, loopBtn, divWrap);
-        root.appendChild(controls);
-
-        // ── éditeur — grille CSS unifiée ──
-        const editor = document.createElement('div');
-        editor.classList.add('partition-editor');
-
         // ── barre de sélection de durée ──
         const durBar = document.createElement('div');
         durBar.classList.add('part-dur-bar');
@@ -868,7 +861,13 @@ class PartitionManager {
             });
             durBar.appendChild(btn);
         });
-        editor.appendChild(durBar);
+
+        controls.append(nameWrap, bpmWrap, this._playBtn, loopBtn, divWrap, durBar);
+        root.appendChild(controls);
+
+        // ── éditeur — grille CSS unifiée ──
+        const editor = document.createElement('div');
+        editor.classList.add('partition-editor');
 
         // durée effective : premier délimitateur de fin, ou p.length par défaut
         const firstDelimAt    = [...p.chords].sort((a, b) => a.at - b.at).find(c => c.chord === null)?.at ?? p.length;
@@ -2162,7 +2161,7 @@ class GroundRender {
             if (percentComplete < 100) {
                 elem.textContent = Math.round(percentComplete) + ' %';
             } else {
-                elem.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.4.2</span>';
+                elem.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.4.3</span>';
             }
         }
     }
@@ -2908,7 +2907,7 @@ class Application {
         document.body.appendChild (this.appbody);
         this.appstamp = document.createElement('div');
         this.appstamp.id = 'app-stamp';
-        this.appstamp.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.4.2</span>';
+        this.appstamp.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.4.3</span>';
         this.appbody.appendChild (this.appstamp);
 
         this.touchlayer = document.createElement('div');
