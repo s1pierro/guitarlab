@@ -919,7 +919,7 @@ class PartitionManager {
         loadBtn.title = 'Charger une séquence';
         loadBtn.addEventListener('click', () => loadInput.click());
 
-        controls.append(nameWrap, bpmWrap, this._playBtn, loopBtn, divWrap, durBar, saveBtn, loadInput, loadBtn);
+        controls.append(bpmWrap, this._playBtn, loopBtn, divWrap, durBar, nameWrap, saveBtn, loadInput, loadBtn);
         root.appendChild(controls);
 
         // ── éditeur — grille CSS unifiée ──
