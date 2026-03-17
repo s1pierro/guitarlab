@@ -721,6 +721,7 @@ class PartitionManager {
     _render () {
         const root = this._domdest;
         if (!root) return;
+        const savedScroll = root.querySelector('.partition-editor')?.scrollLeft ?? 0;
         this._colEls = [];
         root.innerHTML = '';
 
@@ -1012,6 +1013,7 @@ class PartitionManager {
 
         editor.appendChild(seqGrid);
         root.appendChild(editor);
+        editor.scrollLeft = savedScroll;
     }
 }
 
