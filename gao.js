@@ -597,7 +597,7 @@ class PartitionManager {
         this.items = (d.items || []).map(item => {
             const m = _partMigrateItem(item);
             m.chords = (m.chords || []).map(c => ({ ...c, chord: c.chord ? _partReviveChord(c.chord) : null }));
-            // migration boolean → integer pour les patterns sauvegardés avant v1.9.4.6
+            // migration boolean → integer pour les patterns sauvegardés avant v1.9.4.7
             if (m.pattern) m.pattern = m.pattern.map(row => (row || []).map(v => v === true ? 1 : v === false ? 0 : (v || 0)));
             return m;
         });
@@ -1025,7 +1025,6 @@ const VOICING_BADGES = [
     { key: 'noMuteGap',  sym: '▬', title: 'Pas de corde mutée intérieure',          cls: 'badge-nomute'   },
     { key: 'strictTriad',sym: '▲', title: 'Triade stricte — 3 cordes consécutives', cls: 'badge-triad'    },
     { key: 'triad',      sym: '△', title: 'Triade — 3 cordes avec discontinuité',   cls: 'badge-triad'    },
-    { key: 'complete',   sym: '★', title: 'Tous les intervalles présents',          cls: 'badge-complete' },
     { key: 'unique',     sym: '◇', title: 'Aucune note répétée',                    cls: 'badge-unique'   },
 ];
 
@@ -2163,7 +2162,7 @@ class GroundRender {
             if (percentComplete < 100) {
                 elem.textContent = Math.round(percentComplete) + ' %';
             } else {
-                elem.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.4.6</span>';
+                elem.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.4.7</span>';
             }
         }
     }
@@ -2543,7 +2542,6 @@ class PanelReperes extends UXPanel {
             { sym: '▬', label: 'pas de corde mutée intérieure' },
             { sym: '▲', label: 'triade stricte (3 cordes consécutives)' },
             { sym: '△', label: 'triade avec discontinuité' },
-            { sym: '★', label: 'tous les intervalles présents' },
             { sym: '◇', label: 'aucune note répétée' },
         ];
 
@@ -2910,7 +2908,7 @@ class Application {
         document.body.appendChild (this.appbody);
         this.appstamp = document.createElement('div');
         this.appstamp.id = 'app-stamp';
-        this.appstamp.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.4.6</span>';
+        this.appstamp.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.4.7</span>';
         this.appbody.appendChild (this.appstamp);
 
         this.touchlayer = document.createElement('div');
