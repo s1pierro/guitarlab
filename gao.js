@@ -597,7 +597,7 @@ class PartitionManager {
         this.items = (d.items || []).map(item => {
             const m = _partMigrateItem(item);
             m.chords = (m.chords || []).map(c => ({ ...c, chord: c.chord ? _partReviveChord(c.chord) : null }));
-            // migration boolean → integer pour les patterns sauvegardés avant v1.9.5.5
+            // migration boolean → integer pour les patterns sauvegardés avant v1.9.5.6
             if (m.pattern) m.pattern = m.pattern.map(row => (row || []).map(v => v === true ? 1 : v === false ? 0 : (v || 0)));
             return m;
         });
@@ -865,7 +865,45 @@ class PartitionManager {
             durBar.appendChild(btn);
         });
 
-        controls.append(nameWrap, bpmWrap, this._playBtn, loopBtn, divWrap, durBar);
+        // ── sauvegarder / charger séquence ──
+        const saveBtn = document.createElement('button');
+        saveBtn.className = 'part-io-btn';
+        saveBtn.innerHTML = '<i class="icon-doc"></i>';
+        saveBtn.title = 'Sauvegarder la séquence';
+        saveBtn.addEventListener('click', () => {
+            const blob = new Blob([JSON.stringify(p, null, 2)], { type: 'application/json' });
+            const url  = URL.createObjectURL(blob);
+            const a    = document.createElement('a');
+            a.href = url; a.download = (p.name || 'sequence') + '.json'; a.click();
+            URL.revokeObjectURL(url);
+        });
+
+        const loadInput = document.createElement('input');
+        loadInput.type = 'file'; loadInput.accept = '.json,application/json';
+        loadInput.style.display = 'none';
+        loadInput.addEventListener('change', (e) => {
+            const file = e.target.files[0]; if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                try {
+                    const raw  = JSON.parse(ev.target.result);
+                    const item = _partMigrateItem(raw);
+                    item.chords = (item.chords || []).map(c => ({ ...c, chord: c.chord ? _partReviveChord(c.chord) : null }));
+                    item.id = 'p' + Date.now().toString(36);
+                    this.items.push(item);
+                    this.activeId = item.id;
+                    this.onStateChange(); this._render();
+                } catch {}
+            };
+            reader.readAsText(file); loadInput.value = '';
+        });
+        const loadBtn = document.createElement('button');
+        loadBtn.className = 'part-io-btn';
+        loadBtn.innerHTML = '<i class="icon-folder-open-empty"></i>';
+        loadBtn.title = 'Charger une séquence';
+        loadBtn.addEventListener('click', () => loadInput.click());
+
+        controls.append(nameWrap, bpmWrap, this._playBtn, loopBtn, divWrap, durBar, saveBtn, loadInput, loadBtn);
         root.appendChild(controls);
 
         // ── éditeur — grille CSS unifiée ──
@@ -2164,7 +2202,7 @@ class GroundRender {
             if (percentComplete < 100) {
                 elem.textContent = Math.round(percentComplete) + ' %';
             } else {
-                elem.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.5.5</span>';
+                elem.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.5.6</span>';
             }
         }
     }
@@ -2337,16 +2375,18 @@ class AppStorage {
             .filter(k => k.startsWith(prefix))
             .forEach(k => localStorage.removeItem(k));
     }
-    exportAll () {
+    exportAll (exclude = []) {
         const prefix = this.ns + ':';
         const out = {};
         Object.keys(localStorage)
-            .filter(k => k.startsWith(prefix))
+            .filter(k => k.startsWith(prefix) && !exclude.includes(k.slice(prefix.length)))
             .forEach(k => { out[k.slice(prefix.length)] = JSON.parse(localStorage.getItem(k)); });
         return out;
     }
-    importAll (data) {
-        Object.entries(data).forEach(([k, v]) => this.set(k, v));
+    importAll (data, exclude = []) {
+        Object.entries(data)
+            .filter(([k]) => !exclude.includes(k))
+            .forEach(([k, v]) => this.set(k, v));
     }
 }
 
@@ -2482,7 +2522,7 @@ class PanelParametres extends UXPanel {
         exportBtn.innerHTML = '<i class="icon-doc"></i> Exporter la session';
         exportBtn.addEventListener('click', () => {
             if (this._stack) this._stack.collapse(this);
-            const data = this.storage.exportAll();
+            const data = this.storage.exportAll(['partitions']);
             const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -2507,7 +2547,7 @@ class PanelParametres extends UXPanel {
             reader.onload = (ev) => {
                 try {
                     const data = JSON.parse(ev.target.result);
-                    this.storage.importAll(data);
+                    this.storage.importAll(data, ['partitions']);
                     location.reload();
                 } catch { alert('Fichier de session invalide.'); }
             };
@@ -2911,7 +2951,7 @@ class Application {
         document.body.appendChild (this.appbody);
         this.appstamp = document.createElement('div');
         this.appstamp.id = 'app-stamp';
-        this.appstamp.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.5.5</span>';
+        this.appstamp.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.5.6</span>';
         this.appbody.appendChild (this.appstamp);
 
         this.touchlayer = document.createElement('div');

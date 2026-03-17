@@ -1078,6 +1078,18 @@ div.statebar {
 .partition-play-btn:hover,
 .partition-loop-btn:hover  { background: #ddd; }
 .partition-loop-btn.active { background: #ede9fe; color: #7c3aed; border-color: #c4b5fd; }
+.part-io-btn {
+    border: 1px solid #ccc;
+    background: #eee;
+    border-radius: 0.3em;
+    cursor: pointer;
+    padding: 0.2em 0.4em;
+    font-size: 0.85em;
+    line-height: 1;
+    font-family: inherit;
+    color: #555;
+}
+.part-io-btn:hover { background: #ddd; }
 
 /* ── sélecteur de division ── */
 .part-div-wrap {
