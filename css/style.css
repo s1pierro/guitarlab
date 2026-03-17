@@ -810,7 +810,8 @@ div.statebar {
     transition: background 0.1s, color 0.1s;
 }
 .catalog-pill:hover { color: #333; }
-.catalog-pill--active {
+.catalog-pill--active,
+.catalog-pill--active:hover {
     background: #000000cc;
     color: #fff;
     font-weight: 600;
