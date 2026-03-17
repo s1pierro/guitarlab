@@ -692,9 +692,17 @@ class PartitionManager {
         Tone.Transport.start();
         this._playing = true;
         this._updatePlayBtn();
+
+        // fin de séquence sans boucle → réinitialiser le bouton
+        if (!this._looping) {
+            this._endEvent = Tone.Transport.scheduleOnce(() => {
+                setTimeout(() => this.stop(), 0);
+            }, totalSec);
+        }
     }
 
     stop () {
+        if (this._endEvent !== undefined) { Tone.Transport.clear(this._endEvent); this._endEvent = undefined; }
         if (this._seq) { this._seq.stop(); this._seq.dispose(); this._seq = null; }
         Tone.Transport.stop();
         this._playing = false;
