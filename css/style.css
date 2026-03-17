@@ -1138,7 +1138,7 @@ div.statebar {
     border-bottom: 1px solid #ddd;
 }
 
-/* rangée 1 — accords */
+/* rangée 1 — accords (main manche) */
 .part-ctrack-cell {
     display: flex;
     flex-direction: column;
@@ -1146,16 +1146,17 @@ div.statebar {
     justify-content: center;
     gap: 0.1em;
     padding: 0.15em 0.1em;
-    border-right: 1px solid #ececec;
+    border-right: 1px solid #ddd0f5;
+    border-bottom: 2px solid #c4b0e8;
     cursor: pointer;
     overflow: hidden;
-    background: #fafafa;
+    background: #f3eeff;
     transition: background 0.08s;
 }
-.part-ctrack-cell.beat-start   { border-left: 1px solid #b8b8b8; }
-.part-ctrack-cell.chord-active { background: rgba(124, 58, 237, 0.07); }
-.part-ctrack-cell.chord-start  { background: #f0e8ff; }
-.part-ctrack-cell:not(.chord-start):hover { background: #f3eeff; }
+.part-ctrack-cell.beat-start   { border-left: 1px solid #a890d8; }
+.part-ctrack-cell.chord-active { background: #ede5ff; }
+.part-ctrack-cell.chord-start  { background: #e4d5ff; }
+.part-ctrack-cell:not(.chord-start):hover { background: #e8dcff; }
 .part-chord-name-label {
     writing-mode: vertical-lr;
     transform: rotate(180deg);
@@ -1167,27 +1168,28 @@ div.statebar {
     max-height: 100%;
 }
 
-/* rangée 2 — délimiteurs de fin */
+/* rangée 2 — marqueur fin de séquence */
 .part-ctrack-delim-cell {
     display: flex;
     align-items: center;
     justify-content: center;
-    border-right: 1px solid #ececec;
+    border-right: 1px solid #e0e0e0;
+    border-bottom: 2px solid #c8c8c8;
     cursor: pointer;
     font-size: 0.7em;
     color: #bbb;
-    background: #fafafa;
+    background: #efefef;
     transition: background 0.08s, color 0.08s;
 }
 .part-ctrack-delim-cell.beat-start   { border-left: 1px solid #b8b8b8; }
-.part-ctrack-delim-cell.delim-active { color: #7c3aed; background: #ede9fe; }
-.part-ctrack-delim-cell:not(.delim-active):hover { background: #f3eeff; color: #9966cc; }
+.part-ctrack-delim-cell.delim-active { color: #7c3aed; background: #ddd5f5; }
+.part-ctrack-delim-cell:not(.delim-active):hover { background: #e4e0f5; color: #9966cc; }
 
-/* rangées 3–8 — picking */
+/* rangées 3–8 — picking (main chevalet) */
 .part-cell {
     border-right: 1px solid #ececec;
     border-bottom: 1px solid #ececec;
-    background: #fafafa;
+    background: #ffffff;
     transition: background 0.08s;
     touch-action: none;
     cursor: pointer;
