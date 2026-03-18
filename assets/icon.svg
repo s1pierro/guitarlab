@@ -1,14 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
 
-  <!-- Fond arrondi — bois de rose sombre -->
-  <rect width="512" height="512" rx="96" fill="#3d1a00"/>
-
   <!-- Manche de la loupe -->
   <line x1="352" y1="344" x2="478" y2="470"
         stroke="#f0ddc0" stroke-width="54" stroke-linecap="round"/>
-
-  <!-- Verre de la loupe — fond légèrement plus clair -->
-  <circle cx="208" cy="200" r="178" fill="#5c2800"/>
 
   <!-- ── Rosace ── -->
 
