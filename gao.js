@@ -747,7 +747,7 @@ class PartitionManager {
         this.items = (d.items || []).map(item => {
             const m = _partMigrateItem(item);
             m.chords = (m.chords || []).map(c => ({ ...c, chord: c.chord ? _partReviveChord(c.chord) : null }));
-            // migration boolean → integer pour les patterns sauvegardés avant v1.9.6.5
+            // migration boolean → integer pour les patterns sauvegardés avant v1.9.6.6
             if (m.pattern) m.pattern = m.pattern.map(row => (row || []).map(v => v === true ? 1 : v === false ? 0 : (v || 0)));
             return m;
         });
@@ -2398,7 +2398,7 @@ class GroundRender {
             if (percentComplete < 100) {
                 elem.textContent = Math.round(percentComplete) + ' %';
             } else {
-                elem.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.6.5</span>';
+                elem.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.6.6</span>';
             }
         }
     }
@@ -3292,7 +3292,7 @@ class Application {
         document.body.appendChild (this.appbody);
         this.appstamp = document.createElement('div');
         this.appstamp.id = 'app-stamp';
-        this.appstamp.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.6.5</span>';
+        this.appstamp.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.6.6</span>';
         this.appbody.appendChild(this.appstamp);
 
         this.configOverlay = new ConfigOverlay(this.storage);
@@ -3588,8 +3588,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch {}
     }
 
-    // charge la définition de guitare puis démarre l'app en arrière-plan
-    const guitardef = await fetch('guitars/classique-6.json').then(r => r.json());
+    // charge la banque de guitares puis la définition de la guitare sélectionnée
+    const bank      = await fetch('guitar-bank.json').then(r => r.json());
+    const entry     = bank.guitars.find(g => g.id === bank.selected) ?? bank.guitars[0];
+    const guitardef = await fetch(entry.config).then(r => r.json());
     window.application = new Application(() => {
         hint.classList.add('ready');
     }, guitardef);

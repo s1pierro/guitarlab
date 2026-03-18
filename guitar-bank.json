@@ -1,0 +1,9 @@
+{
+    "selected": "classique-6",
+    "guitars": [
+        {
+            "id": "classique-6",
+            "config": "guitars/classique-6.json"
+        }
+    ]
+}
