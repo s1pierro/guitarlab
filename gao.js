@@ -1360,11 +1360,21 @@ class ChordWizard {
             ? founded[0].chord
             : new Chord(frets, '?', '', '', '', '', notes.map(n => n.octavednote), []);
 
+        const pinbtn = document.createElement('span');
+        pinbtn.classList.add('pin-btn');
+        pinbtn.innerHTML = '<i class="icon-attach-2"></i>';
+        if (this.chordpinboard.has(chord)) pinbtn.classList.add('blast');
+        pinbtn.addEventListener('click', () => {
+            this.chordpinboard.pinchord(chord);
+            this.print(domdest);
+        }, true);
+
         if (recognized) {
             aguesstitle.innerHTML = '<strong>' + founded[0].chordtype + ' </strong><span class="score">' + founded[0].score.toFixed(1) + '</span>';
         } else {
             aguesstitle.innerHTML = '<span class="chord-unknown">?</span>';
         }
+        aguesstitle.prepend(pinbtn);
 
         // ── frettes + notes ──
         const aguessdesc = document.createElement('div');
@@ -2819,6 +2829,17 @@ class PanelMultipads extends UXPanel {
     }
 }
 
+class PanelBibliotheque extends UXPanel {
+    constructor (chordwizard) {
+        super('bibliotheque', 'Bibliothèque', 'icon-attach-2', 'Bibliothèque d\'accords');
+        this.chordwizard = chordwizard;
+    }
+    mountContent (container) {
+        this.chordwizard.mountPinBoard(container);
+        this.chordwizard.chordpinboard.update();
+    }
+}
+
 class PanelCatalogue extends UXPanel {
     constructor (chordwizard, computedguitar, groundrender, storage) {
         super('catalogue', 'Catalogue', 'icon-book', 'Catalogue d\'accords');
@@ -3668,6 +3689,7 @@ class Application {
         this.uxstack = new UXStack(this.storage);
         this.panelMultipads = new PanelMultipads(this);
         this.uxstack.add(this.panelMultipads);
+        this.uxstack.add(new PanelBibliotheque(this.chordwizard));
         this.uxstack.add(new PanelCatalogue(this.chordwizard, this.computedguitar, this.groundrender, this.storage));
         this.uxstack.add(new PanelPartitions(this.partitions));
         this.uxstack.add(new PanelEcoute());
