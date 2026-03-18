@@ -3,6 +3,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { MTLLoader } from 'three/addons/loaders/MTLLoader.js';
 import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 import { notesFr, notes, allnotes, allnotesFr, intervals, chordtypes, extraireChiffres, extractBaseNote, Interval, Chord } from './music-theory.js';
+import { ic, loadIcons } from './js/dom-utils.js';
 
 // Données musicales dans music-theory.js (notes, intervalles, accords, Interval, Chord)
 
@@ -461,30 +462,89 @@ class ChordPinBoard {
     }
 }
 class PluckPad {
-    constructor (strings, domdest) {
+    // mode = 'master' : minimize + clone  |  mode = 'pad' : close uniquement, accord figé
+    constructor (strings, domdest, opts = {}) {
+        const { mode = 'master', onClone = null, onClose = null,
+                storage = null, storageKey = 'pluck-pos', orientKey = null,
+                snapshot = null, onDragEnd = null } = opts;
+
+        this.strings  = strings;
+        this._snapshot = snapshot;   // null = live, objet = figé
+        this._minimized = false;
+
+        // ── wrapper flottant ──
+        this.el = document.createElement('div');
+        this.el.className = 'pluck-float' + (mode === 'pad' ? ' pluck-float--pad' : '');
+        domdest.appendChild(this.el);
+
+        // ── header ──
+        const header = document.createElement('div');
+        header.className = 'pluck-float-header';
+
+        const title = document.createElement('span');
+        title.className = 'pluck-float-title';
+        title.textContent = snapshot ? `⬡ ${snapshot.name}` : '⬡';
+        header.appendChild(title);
+
+        const btns = document.createElement('div');
+        btns.className = 'pluck-float-btns';
+
+        if (mode === 'master') {
+            const minBtn = document.createElement('button');
+            minBtn.className = 'pluck-float-btn';
+            minBtn.title = 'Réduire';
+            minBtn.appendChild(ic('minimize'));
+            minBtn.addEventListener('click', e => { e.stopPropagation(); this._toggleMinimize(); });
+            minBtn.addEventListener('mousedown', e => e.stopPropagation());
+            minBtn.addEventListener('touchstart', e => e.stopPropagation(), { passive: true });
+
+            const cloneBtn = document.createElement('button');
+            cloneBtn.className = 'pluck-float-btn';
+            cloneBtn.title = 'Cloner';
+            cloneBtn.textContent = '⊕';
+            cloneBtn.addEventListener('click', e => { e.stopPropagation(); onClone?.(); });
+            cloneBtn.addEventListener('mousedown', e => e.stopPropagation());
+            cloneBtn.addEventListener('touchstart', e => e.stopPropagation(), { passive: true });
+
+            btns.append(minBtn, cloneBtn);
+        } else {
+            const closeBtn = document.createElement('button');
+            closeBtn.className = 'pluck-float-btn';
+            closeBtn.title = 'Fermer';
+            closeBtn.textContent = '×';
+            closeBtn.addEventListener('click', e => { e.stopPropagation(); this.el.remove(); onClose?.(); });
+            closeBtn.addEventListener('mousedown', e => e.stopPropagation());
+            closeBtn.addEventListener('touchstart', e => e.stopPropagation(), { passive: true });
+
+            btns.appendChild(closeBtn);
+        }
+
+        header.appendChild(btns);
+        this.el.appendChild(header);
+
+        // ── grille de pads ──
         this.domctnr = document.createElement('div');
-        this.domctnr.id = 'PluckPad';
-        domdest.appendChild(this.domctnr);
-        this.strings = strings;
+        this.domctnr.className = 'pluck-float-body';
+        this.el.appendChild(this.domctnr);
+
+        // ── drag (sur le titre uniquement) ──
+        this._initDrag(title, storage, storageKey, orientKey, onDragEnd);
 
         // ── interactions tactiles ──
         let activeEl = null;
-
         const padAt = (x, y) => {
             const el = document.elementFromPoint(x, y);
             return el?.closest('.p-pad') ?? null;
         };
         const pluckEl = (el) => {
             const idx = parseInt(el.dataset.stringIndex);
-            if (!isNaN(idx)) this.pluck(this.strings[idx]);
+            if (!isNaN(idx)) this._pluckByIndex(idx);
         };
-
-        this.domctnr.addEventListener('touchstart', (ev) => {
+        this.domctnr.addEventListener('touchstart', ev => {
             ev.preventDefault();
             activeEl = padAt(ev.touches[0].clientX, ev.touches[0].clientY);
         }, { passive: false });
-
-        this.domctnr.addEventListener('touchmove', (ev) => {
+        this.domctnr.addEventListener('touchmove', ev => {
             ev.preventDefault();
             const t = ev.touches[0];
             const under = padAt(t.clientX, t.clientY);
@@ -493,13 +553,85 @@ class PluckPad {
                 activeEl = under;
             }
         }, { passive: false });
-
         this.domctnr.addEventListener('touchend', () => {
             if (activeEl) pluckEl(activeEl);
             activeEl = null;
         });
 
-        this.update();
+        if (this._snapshot) this._renderSnapshot();
+        else this.update();
+    }
+
+    _toggleMinimize () {
+        this._minimized = !this._minimized;
+        this.el.classList.toggle('pluck-float--minimized', this._minimized);
+    }
+
+    _initDrag (handle, storage, storageKey, orientKey, onDragEnd = null) {
+        let dragging = false, ox = 0, oy = 0;
+
+        const applyPos = () => {
+            if (!storage || !orientKey) return;
+            const pos = storage.get(storageKey, {});
+            const p = pos[orientKey()];
+            if (!p) return;
+            requestAnimationFrame(() => {
+                const r = this.el.getBoundingClientRect();
+                const rawLeft = p.rx !== undefined ? p.rx * window.innerWidth  : parseFloat(p.left);
+                const rawTop  = p.ry !== undefined ? p.ry * window.innerHeight : parseFloat(p.top);
+                this.el.style.left   = Math.min(Math.max(0, rawLeft), window.innerWidth  - r.width)  + 'px';
+                this.el.style.top    = Math.min(Math.max(0, rawTop),  window.innerHeight - r.height) + 'px';
+                this.el.style.bottom = 'auto';
+            });
+        };
+        const savePos = () => {
+            if (!storage || !orientKey) return;
+            const r = this.el.getBoundingClientRect();
+            const pos = storage.get(storageKey, {});
+            pos[orientKey()] = { rx: r.left / window.innerWidth, ry: r.top / window.innerHeight };
+            storage.set(storageKey, pos);
+        };
+
+        applyPos();
+        if (orientKey)
+            window.matchMedia('(orientation: portrait)').addEventListener('change', () => setTimeout(applyPos, 150));
+
+        handle.addEventListener('mousedown', e => {
+            dragging = true;
+            ox = e.clientX - this.el.getBoundingClientRect().left;
+            oy = e.clientY - this.el.getBoundingClientRect().top;
+            e.preventDefault();
+        });
+        handle.addEventListener('touchstart', e => {
+            const t = e.touches[0];
+            dragging = true;
+            ox = t.clientX - this.el.getBoundingClientRect().left;
+            oy = t.clientY - this.el.getBoundingClientRect().top;
+        }, { passive: true });
+        window.addEventListener('mousemove', e => {
+            if (!dragging) return;
+            this.el.style.left = (e.clientX - ox) + 'px';
+            this.el.style.top  = (e.clientY - oy) + 'px';
+            this.el.style.bottom = 'auto';
+        });
+        window.addEventListener('touchmove', e => {
+            if (!dragging) return;
+            const t = e.touches[0];
+            this.el.style.left = (t.clientX - ox) + 'px';
+            this.el.style.top  = (t.clientY - oy) + 'px';
+            this.el.style.bottom = 'auto';
+        }, { passive: true });
+        window.addEventListener('mouseup',  () => { if (dragging) { dragging = false; savePos(); onDragEnd?.(); } });
+        window.addEventListener('touchend', () => { if (dragging) { dragging = false; savePos(); onDragEnd?.(); } });
+    }
+
+    _pluckByIndex (idx) {
+        if (this._snapshot) {
+            const { octavednote, synth } = this._snapshot.strings[idx];
+            if (octavednote !== 'x') synth.triggerAttack(octavednote, Tone.now());
+        } else {
+            this.pluck(this.strings[idx]);
+        }
     }
 
     pluck (string) {
@@ -509,30 +641,48 @@ class PluckPad {
     }
 
     update () {
+        if (this._snapshot) return;   // figé — pas de mise à jour
         this.domctnr.innerHTML = '';
         for (let i = 0; i < this.strings.length; i++) {
             const ctnr = document.createElement('div');
             ctnr.classList.add('p-pad');
             ctnr.dataset.stringIndex = i;
-
             const state    = this.strings[i].getstate();
             const interval = this.strings[i].interval;
-
             if (interval) {
                 const iv = document.createElement('i');
                 iv.className = 'p-pad-iv icon-nit-' + interval;
                 ctnr.appendChild(iv);
             }
-
             if (state.octavednote !== 'x') {
                 const noteEl = document.createElement('span');
                 noteEl.classList.add('p-pad-note');
                 noteEl.textContent = state.octavednote;
                 ctnr.appendChild(noteEl);
             }
-
             this.domctnr.appendChild(ctnr);
         }
+    }
+
+    _renderSnapshot () {
+        this.domctnr.innerHTML = '';
+        this._snapshot.strings.forEach((s, i) => {
+            const ctnr = document.createElement('div');
+            ctnr.classList.add('p-pad');
+            ctnr.dataset.stringIndex = i;
+            if (s.interval) {
+                const iv = document.createElement('i');
+                iv.className = 'p-pad-iv icon-nit-' + s.interval;
+                ctnr.appendChild(iv);
+            }
+            if (s.octavednote !== 'x') {
+                const noteEl = document.createElement('span');
+                noteEl.classList.add('p-pad-note');
+                noteEl.textContent = s.octavednote;
+                ctnr.appendChild(noteEl);
+            }
+            this.domctnr.appendChild(ctnr);
+        });
     }
 }
 // ─────────────────────────────────────────────────────────────────────────────
@@ -597,7 +747,7 @@ class PartitionManager {
         this.items = (d.items || []).map(item => {
             const m = _partMigrateItem(item);
             m.chords = (m.chords || []).map(c => ({ ...c, chord: c.chord ? _partReviveChord(c.chord) : null }));
-            // migration boolean → integer pour les patterns sauvegardés avant v1.9.5.7
+            // migration boolean → integer pour les patterns sauvegardés avant v1.9.6.5
             if (m.pattern) m.pattern = m.pattern.map(row => (row || []).map(v => v === true ? 1 : v === false ? 0 : (v || 0)));
             return m;
         });
@@ -1484,9 +1634,10 @@ class ChordWizard {
             maxNotes:       saved.maxNotes        ?? this._instrument.tuning.length,
             allowInversion: saved.allowInversion  ?? true,
             minFret:        saved.minFret         ?? 0,
-            maxFret:        saved.maxFret         ?? nfrets
+            maxFret:        saved.maxFret         ?? nfrets,
+            badgeFilters:   new Set(),   // non persisté
         };
-        const saveState = () => { if (storage) storage.set('catalog-filters', state); };
+        const saveState = () => { if (storage) storage.set('catalog-filters', { ...state, badgeFilters: undefined }); };
 
         const makeCard = (v, chordName) => {
             const card = document.createElement('div');
@@ -1533,11 +1684,20 @@ class ChordWizard {
                     return match && match.root === state.root && match.chordtypeindex === state.chordTypeIndex;
                 })
                 .sort((a, b) => minPressed(a) - minPressed(b));
+
+            // filtre badges
+            const bf = state.badgeFilters;
+            const displayed = bf.size === 0 ? validated : validated.filter(v => {
+                const props = this._voicingProps(v, state.root, state.chordTypeIndex);
+                if (bf.has('none') && VOICING_BADGES.every(b => !props[b.key])) return true;
+                return VOICING_BADGES.some(b => bf.has(b.key) && props[b.key]);
+            });
+
             header.textContent = '';
 
             // groupement par position (minPressed)
             const groups = new Map();
-            validated.forEach(v => {
+            displayed.forEach(v => {
                 const pos = minPressed(v);
                 if (!groups.has(pos)) groups.set(pos, []);
                 groups.get(pos).push(v);
@@ -1584,6 +1744,26 @@ class ChordWizard {
         const header = document.createElement('div');
         header.classList.add('catalog-header');
         domdest.appendChild(header);
+
+        // ── filtres badges ──
+        const badgeRow = document.createElement('div');
+        badgeRow.className = 'catalog-pill-row catalog-badge-row';
+        const makeBadgeToggle = (key, sym, cls, title) => {
+            const pill = document.createElement('span');
+            pill.className = 'catalog-pill catalog-badge-pill' + (state.badgeFilters.has(key) ? ' catalog-pill--active' : '');
+            pill.title = title;
+            pill.appendChild(_makeBadgeSpan(sym, cls, ''));
+            pill.addEventListener('click', () => {
+                if (state.badgeFilters.has(key)) state.badgeFilters.delete(key);
+                else state.badgeFilters.add(key);
+                pill.classList.toggle('catalog-pill--active', state.badgeFilters.has(key));
+                render();
+            });
+            return pill;
+        };
+        VOICING_BADGES.forEach(({ key, sym, cls, title }) => badgeRow.appendChild(makeBadgeToggle(key, sym, cls, title)));
+        badgeRow.appendChild(makeBadgeToggle('none', '∅', 'badge-none', 'Sans badge'));
+        domdest.appendChild(badgeRow);
 
         // ── filtres ──
         const filters = document.createElement('div');
@@ -2218,7 +2398,7 @@ class GroundRender {
             if (percentComplete < 100) {
                 elem.textContent = Math.round(percentComplete) + ' %';
             } else {
-                elem.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.5.7</span>';
+                elem.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.6.5</span>';
             }
         }
     }
@@ -2431,11 +2611,36 @@ class UXPanel {
         if (!this._panelEl) {
             this._panelEl = document.createElement('div');
             this._panelEl.className = 'ux-panel';
+
             const header = document.createElement('div');
             header.className = 'ux-panel-header';
-            header.innerHTML = `<i class="${this.icon}"></i><span>${this.fullLabel || this.label}</span>`;
-            header.addEventListener('click', () => this._stack && this._stack.collapse(this));
+
+            // zone titre — clic = collapse
+            const titleZone = document.createElement('div');
+            titleZone.className = 'ux-panel-title';
+            titleZone.innerHTML = `<i class="${this.icon}"></i><span>${this.fullLabel || this.label}</span>`;
+
+            // boutons d'action (droite)
+            const actions = document.createElement('div');
+            actions.className = 'ux-panel-actions';
+
+            const mkBtn = (iconName, title, action) => {
+                const btn = document.createElement('button');
+                btn.className = 'ux-panel-action-btn';
+                btn.title = title;
+                btn.appendChild(ic(iconName));
+                btn.addEventListener('click', e => { e.stopPropagation(); action(); });
+                return btn;
+            };
+
+            this._actionUp   = mkBtn('up',       'Monter',    () => this._stack && this._stack.moveUp(this));
+            this._actionDown = mkBtn('down',      'Descendre', () => this._stack && this._stack.moveDown(this));
+            const actionMin  = mkBtn('minimize',  'Réduire',   () => this._stack && this._stack.collapse(this));
+
+            actions.append(this._actionUp, this._actionDown, actionMin);
+            header.append(titleZone, actions);
             this._panelEl.appendChild(header);
+
             this._contentEl = document.createElement('div');
             this._contentEl.className = 'ux-panel-content';
             this._panelEl.appendChild(this._contentEl);
@@ -2446,6 +2651,13 @@ class UXPanel {
         }
         this.onExpanded();
         return this._panelEl;
+    }
+
+    // met à jour l'état actif/inactif des boutons ↑ ↓ selon la position dans la pile
+    setPosition (idx, total) {
+        if (!this._actionUp) return;
+        this._actionUp.disabled   = idx === 0;
+        this._actionDown.disabled = idx === total - 1;
     }
 
     getButton () {
@@ -2970,21 +3182,94 @@ class UXStack {
     }
 
     collapse (panel) {
-        panel.expanded = false;
-        panel.onCollapsed();
-        const expanded  = this.panels.filter(p => p.expanded);
-        const collapsed = this.panels.filter(p => !p.expanded && p !== panel);
-        this.panels = [...expanded, panel, ...collapsed];
+        const el = panel._panelEl;
+        if (el && el.isConnected) {
+            el.style.transformOrigin = 'top';
+            el.style.transition = 'opacity 0.18s ease, transform 0.18s ease';
+            el.style.opacity = '0';
+            el.style.transform = 'scaleY(0.92) translateY(-6px)';
+            setTimeout(() => {
+                el.style.cssText = '';
+                panel.expanded = false;
+                panel.onCollapsed();
+                const expanded  = this.panels.filter(p => p.expanded);
+                const collapsed = this.panels.filter(p => !p.expanded && p !== panel);
+                this.panels = [...expanded, panel, ...collapsed];
+                this._save();
+                this._render();
+            }, 180);
+        } else {
+            panel.expanded = false;
+            panel.onCollapsed();
+            const expanded  = this.panels.filter(p => p.expanded);
+            const collapsed = this.panels.filter(p => !p.expanded && p !== panel);
+            this.panels = [...expanded, panel, ...collapsed];
+            this._save();
+            this._render();
+        }
+    }
+
+    moveUp (panel) {
+        const exp = this.panels.filter(p => p.expanded);
+        const ei = exp.indexOf(panel);
+        if (ei <= 0) return;
+        const fi = this.panels.indexOf(panel);
+        const fj = this.panels.indexOf(exp[ei - 1]);
+        [this.panels[fi], this.panels[fj]] = [this.panels[fj], this.panels[fi]];
+        this._save();
+        this._render();
+    }
+
+    moveDown (panel) {
+        const exp = this.panels.filter(p => p.expanded);
+        const ei = exp.indexOf(panel);
+        if (ei < 0 || ei >= exp.length - 1) return;
+        const fi = this.panels.indexOf(panel);
+        const fj = this.panels.indexOf(exp[ei + 1]);
+        [this.panels[fi], this.panels[fj]] = [this.panels[fj], this.panels[fi]];
         this._save();
         this._render();
     }
 
     _render () {
+        // FLIP — mémoriser les positions avant le reflow
+        const tops = new Map();
+        this.panels.forEach(p => {
+            if (p._panelEl && p._panelEl.parentElement === this._expandedArea)
+                tops.set(p.id, p._panelEl.getBoundingClientRect().top);
+        });
+
         this._expandedArea.innerHTML = '';
         this._collapsedArea.innerHTML = '';
+        const exp = this.panels.filter(p => p.expanded);
         this.panels.forEach(p => {
-            if (p.expanded) this._expandedArea.appendChild(p.getPanel());
-            else            this._collapsedArea.appendChild(p.getButton());
+            if (p.expanded) {
+                this._expandedArea.appendChild(p.getPanel());
+                p.setPosition(exp.indexOf(p), exp.length);
+            } else {
+                this._collapsedArea.appendChild(p.getButton());
+            }
+        });
+
+        // FLIP — animer les panels déjà présents, slide-in pour les nouveaux
+        exp.forEach(p => {
+            const el = p._panelEl;
+            const prevTop = tops.get(p.id);
+            if (prevTop === undefined) {
+                // nouveau panel — slide in depuis le haut
+                el.classList.add('ux-panel--entering');
+                el.addEventListener('animationend', () => el.classList.remove('ux-panel--entering'), { once: true });
+                return;
+            }
+            const dy = prevTop - el.getBoundingClientRect().top;
+            if (Math.abs(dy) < 1) return;
+            el.style.transform = `translateY(${dy}px)`;
+            el.style.transition = 'none';
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+                el.style.transition = 'transform 0.28s cubic-bezier(0.4, 0, 0.2, 1)';
+                el.style.transform = '';
+                el.addEventListener('transitionend', () => { el.style.transition = ''; }, { once: true });
+            }));
         });
     }
 
@@ -3007,7 +3292,7 @@ class Application {
         document.body.appendChild (this.appbody);
         this.appstamp = document.createElement('div');
         this.appstamp.id = 'app-stamp';
-        this.appstamp.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.5.7</span>';
+        this.appstamp.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.6.5</span>';
         this.appbody.appendChild(this.appstamp);
 
         this.configOverlay = new ConfigOverlay(this.storage);
@@ -3176,74 +3461,79 @@ class Application {
         this.uxstack.add(new PanelReperes());
         this.uxstack.mount(this.ux);
 
-        // PluckPad — flottant déplaçable + dépliable
-        const pluckWrap = document.createElement('details');
-        pluckWrap.id = 'pluck-pad-wrap';
-        pluckWrap.open = true;
-        const pluckSummary = document.createElement('summary');
-        pluckSummary.textContent = '⬡ Cordes';
-        pluckWrap.appendChild(pluckSummary);
-        this.appbody.appendChild(pluckWrap);
-
-        const applyPluckPos = () => {
-            const pos = this.storage.get('pluck-pos', {});
-            const p = pos[this._orientKey()];
-            if (!p) return;
-            requestAnimationFrame(() => {
-                const r = pluckWrap.getBoundingClientRect();
-                // support format normalisé {rx, ry} et legacy {left, top}
-                const rawLeft = p.rx !== undefined ? p.rx * window.innerWidth  : parseFloat(p.left);
-                const rawTop  = p.ry !== undefined ? p.ry * window.innerHeight : parseFloat(p.top);
-                const left = Math.min(Math.max(0, rawLeft), window.innerWidth  - r.width);
-                const top  = Math.min(Math.max(0, rawTop),  window.innerHeight - r.height);
-                pluckWrap.style.left   = left + 'px';
-                pluckWrap.style.top    = top  + 'px';
-                pluckWrap.style.bottom = 'auto';
-            });
-        };
-        const savePluckPos = () => {
-            const r = pluckWrap.getBoundingClientRect();
-            const pos = this.storage.get('pluck-pos', {});
-            pos[this._orientKey()] = {
-                rx: r.left / window.innerWidth,
-                ry: r.top  / window.innerHeight,
-            };
-            this.storage.set('pluck-pos', pos);
-        };
-        applyPluckPos();
-        window.matchMedia('(orientation: portrait)').addEventListener('change', () => setTimeout(applyPluckPos, 150));
-
-        let dragging = false, dragOx = 0, dragOy = 0;
-        pluckSummary.addEventListener('mousedown', (e) => {
-            dragging = true;
-            dragOx = e.clientX - pluckWrap.getBoundingClientRect().left;
-            dragOy = e.clientY - pluckWrap.getBoundingClientRect().top;
-            e.preventDefault();
+        // PluckPad maître — flottant déplaçable + minimisable + clonable
+        this._chordPads = [];
+        this.pluckpad = new PluckPad(this.computedguitar.strings, this.appbody, {
+            mode:       'master',
+            storage:    this.storage,
+            storageKey: 'pluck-pos',
+            orientKey:  this._orientKey,
+            onClone: () => {
+                const result    = this.chordwizard._result;
+                const chordName = result?.founded?.[0]?.chordtype ?? '?';
+                const snapshot  = {
+                    name:    chordName,
+                    strings: this.computedguitar.strings.map(s => {
+                        const state = s.getstate();
+                        return { octavednote: state.octavednote, interval: s.interval, synth: s.synth };
+                    }),
+                };
+                const master = this.pluckpad.el.getBoundingClientRect();
+                this._spawnChordPad(snapshot, master.left + 24, master.top + 24);
+                this._saveChordPads();
+            },
         });
-        pluckSummary.addEventListener('touchstart', (e) => {
-            const t = e.touches[0];
-            dragging = true;
-            dragOx = t.clientX - pluckWrap.getBoundingClientRect().left;
-            dragOy = t.clientY - pluckWrap.getBoundingClientRect().top;
-        }, { passive: true });
-        window.addEventListener('mousemove', (e) => {
-            if (!dragging) return;
-            pluckWrap.style.left = (e.clientX - dragOx) + 'px';
-            pluckWrap.style.top  = (e.clientY - dragOy) + 'px';
-            pluckWrap.style.bottom = 'auto';
-        });
-        window.addEventListener('touchmove', (e) => {
-            if (!dragging) return;
-            const t = e.touches[0];
-            pluckWrap.style.left = (t.clientX - dragOx) + 'px';
-            pluckWrap.style.top  = (t.clientY - dragOy) + 'px';
-            pluckWrap.style.bottom = 'auto';
-        }, { passive: true });
-        window.addEventListener('mouseup', () => { if (dragging) { dragging = false; savePluckPos(); } });
-        window.addEventListener('touchend', () => { if (dragging) { dragging = false; savePluckPos(); } });
-
-        this.pluckpad = new PluckPad(this.computedguitar.strings, pluckWrap);
+        this._restoreChordPads();
     }
+    _spawnChordPad (snapshot, left, top) {
+        const pad = new PluckPad(this.computedguitar.strings, this.appbody, {
+            mode:      'pad',
+            snapshot,
+            onClose:   () => {
+                const idx = this._chordPads.indexOf(pad);
+                if (idx >= 0) this._chordPads.splice(idx, 1);
+                this._saveChordPads();
+            },
+            onDragEnd: () => this._saveChordPads(),
+        });
+        pad.el.style.left   = left + 'px';
+        pad.el.style.top    = top  + 'px';
+        pad.el.style.bottom = 'auto';
+        this._chordPads.push(pad);
+        return pad;
+    }
+
+    _saveChordPads () {
+        this.storage.set('chord-pads', this._chordPads.map(pad => {
+            const r = pad.el.getBoundingClientRect();
+            return {
+                name:    pad._snapshot.name,
+                strings: pad._snapshot.strings.map(s => ({
+                    octavednote: s.octavednote,
+                    interval:    s.interval,
+                })),
+                pos: { rx: r.left / window.innerWidth, ry: r.top / window.innerHeight },
+            };
+        }));
+    }
+
+    _restoreChordPads () {
+        const saved = this.storage.get('chord-pads', []);
+        saved.forEach(data => {
+            const snapshot = {
+                name:    data.name,
+                strings: data.strings.map((s, i) => ({
+                    octavednote: s.octavednote,
+                    interval:    s.interval,
+                    synth:       this.computedguitar.strings[i]?.synth,
+                })),
+            };
+            const left = data.pos.rx * window.innerWidth;
+            const top  = data.pos.ry * window.innerHeight;
+            this._spawnChordPad(snapshot, left, top);
+        });
+    }
+
     _buildCameraFrameButtons () {
         const strip = document.createElement('div');
         strip.id = 'cam-frames';
@@ -3285,6 +3575,8 @@ class Application {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
+    await loadIcons();
+
     const splash = document.getElementById('start');
     const hint   = document.getElementById('start-hint');
 

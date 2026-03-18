@@ -1,8 +1,8 @@
 {
     "name": "classique-6",
     "label": "Guitare classique 6 cordes",
-    "wavefront": "gao-beta-6.obj",
-    "material": "gao-beta-6.mtl",
+    "wavefront": "guitars/gao-beta-6.obj",
+    "material": "guitars/gao-beta-6.mtl",
     "stringdefs": [
         {
             "pitch": "E2", "thickness": 0.80, "nfret": 18,

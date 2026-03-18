@@ -59,27 +59,53 @@
 #ux > * {
     pointer-events: auto;
 }
-#pluck-pad-wrap {
+.pluck-float {
     position: absolute;
     z-index: 50;
     left: 0.5em;
     bottom: calc(1.5em + env(safe-area-inset-bottom, 0px));
-    background: #000a;
+    background: #111118;
     border-radius: 0.5em;
     overflow: hidden;
     touch-action: none;
     user-select: none;
 }
-#pluck-pad-wrap > summary {
-    cursor: grab;
+.pluck-float-header {
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid #ffffff22;
+}
+.pluck-float-title {
+    flex: 1;
     padding: 0.25em 0.6em;
     font-size: 0.75em;
-    color: #ffffff99;
-    list-style: none;
+    color: #ffffffcc;
+    cursor: grab;
 }
-#pluck-pad-wrap > summary:active { cursor: grabbing; }
-#pluck-pad-wrap[open] > summary { border-bottom: 1px solid #ffffff22; }
-#PluckPad {
+.pluck-float-title:active { cursor: grabbing; }
+.pluck-float-btns {
+    display: flex;
+    align-items: center;
+}
+.pluck-float-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2em;
+    height: 2em;
+    padding: 0;
+    background: transparent;
+    border: none;
+    color: #ffffffbb;
+    font-size: 0.85em;
+    cursor: pointer;
+    transition: color 0.1s, background 0.1s;
+}
+.pluck-float-btn:hover { color: #fff; background: #ffffff11; }
+.pluck-float-btn .icon { width: 0.9em; height: 0.9em; }
+.pluck-float--minimized .pluck-float-body { display: none; }
+.pluck-float--pad .p-pad { aspect-ratio: 1 / 1.5; }
+.pluck-float-body {
     display: flex;
     align-items: stretch;
     padding: 0.3em 0.25em;
@@ -87,8 +113,7 @@
 }
 #cam-frames {
     position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
+    bottom: calc(1.5em + env(safe-area-inset-bottom, 0px));
     left: 0.5em;
     display: flex;
     flex-direction: column;
@@ -201,7 +226,7 @@
 }
 .p-pad {
     position: relative;
-    background: #0005;
+    background: #fff2;
     border-radius: 0.5em;
     width: 2.6em;
     aspect-ratio: 1 / 2.5;
@@ -973,6 +998,11 @@ div.statebar {
 .badge-triad    { background: #fee2e2; color: #991b1b; }
 .badge-complete { background: #fef3c7; color: #92400e; }
 .badge-unique   { background: #dbeafe; color: #1e40af; }
+.badge-none     { background: #f3f4f6; color: #6b7280; }
+.catalog-badge-row { border-bottom: 1px solid #e5e7eb; }
+.catalog-badge-pill { padding: 0.2em 0.35em; }
+.catalog-badge-pill .vc-badge { font-size: 0.85em; pointer-events: none; }
+.catalog-badge-pill.catalog-pill--active .vc-badge { background: transparent; color: #fff; }
 /* vc-span conservé pour compatibilité éventuelle */
 .vc-span {
     font-size: 0.65em;
@@ -1011,18 +1041,67 @@ div.statebar {
 }
 .ux-panel { border-top: 1px solid #e8e8e8; }
 .ux-panel:first-child { border-top: none; }
+@keyframes ux-panel-enter {
+    from { opacity: 0; transform: scaleY(0.94) translateY(-8px); }
+    to   { opacity: 1; transform: scaleY(1)    translateY(0);    }
+}
+.ux-panel--entering {
+    transform-origin: top;
+    animation: ux-panel-enter 0.22s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+/* ── SVG mask icons (dom-utils ic()) ─────────────────────────────────────── */
+.icon {
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+    background-color: currentColor;
+    -webkit-mask-size: contain;
+    -webkit-mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-size: contain;
+    mask-repeat: no-repeat;
+    mask-position: center;
+    vertical-align: middle;
+    flex-shrink: 0;
+}
+
 .ux-panel-header {
     display: flex;
     align-items: center;
-    gap: 0.4em;
-    padding: 0.5em 0.6em;
-    cursor: pointer;
+    padding: 0.4em 0.5em 0.4em 0.6em;
     font-size: 0.9em;
-    font-weight: 600;
-    color: #1a1a1a;
     user-select: none;
 }
-.ux-panel-header:hover { color: #222; }
+.ux-panel-title {
+    display: flex;
+    align-items: center;
+    gap: 0.4em;
+    flex: 1;
+    font-weight: 600;
+    color: #1a1a1a;
+    padding: 0.1em 0;
+}
+.ux-panel-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.1em;
+}
+.ux-panel-action-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.7em;
+    height: 1.7em;
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-radius: 0.4em;
+    color: #555;
+    cursor: pointer;
+    transition: background 0.1s, color 0.1s;
+}
+.ux-panel-action-btn:hover { background: #f0f0f0; color: #111; }
+.ux-panel-action-btn:disabled { opacity: 0.25; cursor: default; pointer-events: none; }
 .ux-panel-btn {
     display: flex;
     align-items: center;
