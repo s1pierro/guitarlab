@@ -747,7 +747,7 @@ class PartitionManager {
         this.items = (d.items || []).map(item => {
             const m = _partMigrateItem(item);
             m.chords = (m.chords || []).map(c => ({ ...c, chord: c.chord ? _partReviveChord(c.chord) : null }));
-            // migration boolean → integer pour les patterns sauvegardés avant v1.9.6.6
+            // migration boolean → integer pour les patterns sauvegardés avant v1.9.8.0
             if (m.pattern) m.pattern = m.pattern.map(row => (row || []).map(v => v === true ? 1 : v === false ? 0 : (v || 0)));
             return m;
         });
@@ -2398,7 +2398,7 @@ class GroundRender {
             if (percentComplete < 100) {
                 elem.textContent = Math.round(percentComplete) + ' %';
             } else {
-                elem.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.6.6</span>';
+                elem.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.8.0</span>';
             }
         }
     }
@@ -2672,16 +2672,149 @@ class UXPanel {
 }
 
 // ── Panneaux ─────────────────────────────────────────────────────────────────
-class PanelBibliotheque extends UXPanel {
-    constructor (chordwizard) {
-        super('bibliotheque', 'Bibliothèque', 'icon-attach-2', 'Bibliothèque de jeux d\'accords');
-        this.chordwizard = chordwizard;
+class PanelMultipads extends UXPanel {
+    constructor (app) {
+        super('bibliotheque', 'Multipads', 'icon-attach-2', 'Multipads — scènes d\'accords');
+        this._app = app;
+        this._container = null;
     }
+
     mountContent (container) {
-        const favctnr = document.createElement('div');
-        favctnr.id = 'fav-ctnr';
-        container.appendChild(favctnr);
-        this.chordwizard.mountPinBoard(favctnr);
+        this._container = container;
+        this._container.className += ' mp-content';
+        this._render();
+    }
+
+    onExpanded () { this._render(); }
+
+    // ── persistance ──
+    _scenes ()            { return this._app.storage.get('multipads-scenes', []); }
+    _saveScenes (scenes)  { this._app.storage.set('multipads-scenes', scenes); }
+
+    // ── sauvegarde de la scène courante ──
+    _saveCurrentScene (name) {
+        const pads = this._app._chordPads.map(pad => {
+            const r = pad.el.getBoundingClientRect();
+            return {
+                name:    pad._snapshot.name,
+                strings: pad._snapshot.strings.map(s => ({ octavednote: s.octavednote, interval: s.interval })),
+                pos:     { rx: r.left / window.innerWidth, ry: r.top / window.innerHeight },
+            };
+        });
+        const scenes = this._scenes();
+        scenes.unshift({ id: Date.now().toString(36), name, pads });
+        this._saveScenes(scenes);
+    }
+
+    // ── chargement d'une scène (remplace les pads actuels) ──
+    _loadScene (scene) {
+        [...this._app._chordPads].forEach(p => p.el.remove());
+        this._app._chordPads = [];
+        scene.pads.forEach(data => {
+            const snapshot = {
+                name:    data.name,
+                strings: data.strings.map((s, i) => ({
+                    octavednote: s.octavednote,
+                    interval:    s.interval,
+                    synth:       this._app.computedguitar.strings[i]?.synth,
+                })),
+            };
+            this._app._spawnChordPad(snapshot, data.pos.rx * window.innerWidth, data.pos.ry * window.innerHeight);
+        });
+        this._app._saveChordPads();
+    }
+
+    // ── rendu ──
+    _render () {
+        if (!this._container) return;
+        this._container.innerHTML = '';
+
+        // ── formulaire de sauvegarde ──
+        const saveWrap = document.createElement('div');
+        saveWrap.className = 'mp-save-wrap';
+
+        const count = this._app._chordPads?.length ?? 0;
+        const countEl = document.createElement('span');
+        countEl.className = 'mp-pad-count';
+        countEl.textContent = count ? `${count} pad${count > 1 ? 's' : ''} ouvert${count > 1 ? 's' : ''}` : 'Aucun pad ouvert';
+
+        const nameInput = document.createElement('input');
+        nameInput.className = 'mp-name-input';
+        nameInput.type = 'text';
+        nameInput.placeholder = 'Nom de la scène…';
+
+        const saveBtn = document.createElement('button');
+        saveBtn.className = 'mp-save-btn';
+        saveBtn.textContent = 'Sauvegarder';
+        saveBtn.disabled = count === 0;
+        saveBtn.addEventListener('click', () => {
+            const name = nameInput.value.trim() || 'Scène';
+            this._saveCurrentScene(name);
+            nameInput.value = '';
+            this._render();
+        });
+
+        saveWrap.append(countEl, nameInput, saveBtn);
+        this._container.appendChild(saveWrap);
+
+        // ── liste des scènes ──
+        const scenes = this._scenes();
+        if (scenes.length === 0) {
+            const empty = document.createElement('div');
+            empty.className = 'mp-empty';
+            empty.textContent = 'Aucune scène sauvegardée';
+            this._container.appendChild(empty);
+            return;
+        }
+
+        scenes.forEach(scene => {
+            const row = document.createElement('div');
+            row.className = 'mp-scene-row';
+
+            const info = document.createElement('div');
+            info.className = 'mp-scene-info';
+
+            const nameEl = document.createElement('div');
+            nameEl.className = 'mp-scene-name';
+            nameEl.textContent = scene.name;
+
+            const preview = document.createElement('div');
+            preview.className = 'mp-scene-preview';
+            scene.pads.forEach(p => {
+                const pill = document.createElement('span');
+                pill.className = 'mp-chord-pill';
+                pill.textContent = p.name;
+                preview.appendChild(pill);
+            });
+            if (scene.pads.length === 0) {
+                const none = document.createElement('span');
+                none.className = 'mp-chord-pill mp-chord-pill--empty';
+                none.textContent = '—';
+                preview.appendChild(none);
+            }
+
+            info.append(nameEl, preview);
+
+            const actions = document.createElement('div');
+            actions.className = 'mp-scene-actions';
+
+            const loadBtn = document.createElement('button');
+            loadBtn.className = 'mp-btn';
+            loadBtn.textContent = 'Charger';
+            loadBtn.addEventListener('click', () => { this._loadScene(scene); this._render(); });
+
+            const delBtn = document.createElement('button');
+            delBtn.className = 'mp-btn mp-btn--del';
+            delBtn.textContent = '×';
+            delBtn.addEventListener('click', () => {
+                this._saveScenes(this._scenes().filter(s => s.id !== scene.id));
+                this._render();
+            });
+
+            actions.append(loadBtn, delBtn);
+            row.append(info, actions);
+            this._container.appendChild(row);
+        });
     }
 }
 
@@ -2823,7 +2956,81 @@ class ConfigOverlay {
         this._el = el;
     }
 
-    open ()  { this._el?.classList.remove('hidden'); }
+    setContext (bank, app) {
+        this._bank = bank;
+        this._app  = app;
+    }
+
+    open () {
+        if (this._bank && !this._instrumentBuilt) this._buildInstrumentSection();
+        this._el?.classList.remove('hidden');
+    }
+
+    _buildInstrumentSection () {
+        const card = this._el.querySelector('.config-overlay-card');
+        const aboutTitle = [...card.children].find(el =>
+            el.classList.contains('config-section-title') && el.textContent.includes('propos')
+        );
+
+        const insert = el => card.insertBefore(el, aboutTitle);
+
+        // ── titre section ──
+        const secTitle = document.createElement('div');
+        secTitle.className = 'config-section-title';
+        secTitle.innerHTML = '<i class="icon-music"></i> Instrument';
+        insert(secTitle);
+
+        // ── sélection guitare ──
+        const currentId = this._app.storage.get('selected-guitar', null) ?? this._bank.selected;
+        this._bank.guitars.forEach(g => {
+            const btn = document.createElement('button');
+            btn.className = 'settings-link' + (g.id === currentId ? ' settings-link--active' : '');
+            btn.textContent = g.id;
+            btn.addEventListener('click', () => {
+                this._app.storage.set('selected-guitar', g.id);
+                this._app.storage.set('custom-tuning', null);
+                location.reload();
+            });
+            insert(btn);
+        });
+
+        // ── accordage ──
+        const tuningTitle = document.createElement('div');
+        tuningTitle.className = 'config-tuning-title';
+        tuningTitle.textContent = 'Accordage';
+        insert(tuningTitle);
+
+        const noteRange = allnotes.filter(n => {
+            const oct = parseInt(n.match(/\d+/)[0]);
+            return oct >= 1 && oct <= 5;
+        });
+
+        this._app.computedguitar.strings.forEach((s, i) => {
+            const row = document.createElement('div');
+            row.className = 'config-tuning-row';
+
+            const label = document.createElement('span');
+            label.className = 'config-tuning-label';
+            label.textContent = i + 1;
+
+            const sel = document.createElement('select');
+            sel.className = 'config-tuning-select';
+            noteRange.forEach(note => {
+                const opt = document.createElement('option');
+                opt.value = note;
+                opt.textContent = note;
+                if (note === s.name) opt.selected = true;
+                sel.appendChild(opt);
+            });
+            sel.addEventListener('change', () => this._app.retune(i, sel.value));
+
+            row.append(label, sel);
+            insert(row);
+        });
+
+        this._instrumentBuilt = true;
+    }
+
     close () { this._el?.classList.add('hidden'); }
 }
 
@@ -3292,7 +3499,7 @@ class Application {
         document.body.appendChild (this.appbody);
         this.appstamp = document.createElement('div');
         this.appstamp.id = 'app-stamp';
-        this.appstamp.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.6.6</span>';
+        this.appstamp.innerHTML = '<i class="icon-sliders"></i> Guitar Lab <span class="app-version">1.9.8.0</span>';
         this.appbody.appendChild(this.appstamp);
 
         this.configOverlay = new ConfigOverlay(this.storage);
@@ -3454,7 +3661,7 @@ class Application {
 
         // ── UXStack ───────────────────────────────────────────────────────────
         this.uxstack = new UXStack(this.storage);
-        this.uxstack.add(new PanelBibliotheque(this.chordwizard));
+        this.uxstack.add(new PanelMultipads(this));
         this.uxstack.add(new PanelCatalogue(this.chordwizard, this.computedguitar, this.groundrender, this.storage));
         this.uxstack.add(new PanelPartitions(this.partitions));
         this.uxstack.add(new PanelEcoute());
@@ -3534,6 +3741,19 @@ class Application {
         });
     }
 
+    retune (idx, pitch) {
+        const s = this.computedguitar.strings[idx];
+        s.name     = pitch;
+        s.rootnote = pitch.replace(/\d/g, '');
+        this.model.stringNames[idx] = pitch;
+        this.chordwizard.setInstrument({
+            tuning: this.computedguitar.strings.map(s => s.name),
+            frets:  this._guitardef.stringdefs[0].nfret,
+        });
+        this.storage.set('custom-tuning', this.computedguitar.strings.map(s => s.name));
+        this.model.onStateChange();
+    }
+
     _buildCameraFrameButtons () {
         const strip = document.createElement('div');
         strip.id = 'cam-frames';
@@ -3589,12 +3809,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // charge la banque de guitares puis la définition de la guitare sélectionnée
-    const bank      = await fetch('guitar-bank.json').then(r => r.json());
-    const entry     = bank.guitars.find(g => g.id === bank.selected) ?? bank.guitars[0];
-    const guitardef = await fetch(entry.config).then(r => r.json());
+    const bank        = await fetch('guitar-bank.json').then(r => r.json());
+    const tmpStorage  = new AppStorage();
+    const savedGuitar = tmpStorage.get('selected-guitar', null);
+    const entry       = bank.guitars.find(g => g.id === (savedGuitar ?? bank.selected)) ?? bank.guitars[0];
+    const guitardef   = await fetch(entry.config).then(r => r.json());
+
+    // accordage personnalisé sauvegardé
+    const savedTuning = tmpStorage.get('custom-tuning', null);
+    if (savedTuning?.length === guitardef.stringdefs.length)
+        savedTuning.forEach((p, i) => { guitardef.stringdefs[i].pitch = p; });
+
     window.application = new Application(() => {
         hint.classList.add('ready');
     }, guitardef);
+    window.application.configOverlay.setContext(bank, window.application);
 
     splash.addEventListener('click', () => {
         Tone.start();

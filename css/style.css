@@ -218,6 +218,39 @@
     gap: 0.4em;
 }
 .config-section-title:first-child { margin-top: 0; }
+.settings-link--active {
+    background: #ffffff22;
+    opacity: 1;
+}
+.config-tuning-title {
+    font-size: 0.78em;
+    color: #ffffff66;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin: 0.6em 0 0.2em;
+}
+.config-tuning-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6em;
+    padding: 0.15em 0;
+}
+.config-tuning-label {
+    font-size: 0.8em;
+    color: #ffffff88;
+    width: 1em;
+    text-align: right;
+    flex-shrink: 0;
+}
+.config-tuning-select {
+    background: #ffffff0f;
+    border: 1px solid #ffffff22;
+    border-radius: 0.4em;
+    color: #fff;
+    font-size: 0.85em;
+    padding: 0.2em 0.4em;
+    cursor: pointer;
+}
 .config-about-text {
     font-size: 0.82em;
     color: #ffffff88;
@@ -1575,4 +1608,120 @@ div.statebar {
     opacity: 0.75;
     font-family: monospace;
     letter-spacing: 0.05em;
+}
+
+/* ── PanelMultipads ──────────────────────────────────────────────────────── */
+.mp-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8em;
+    padding: 0.6em 0.8em;
+}
+.mp-save-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    background: #0001;
+    border-radius: 0.5em;
+    padding: 0.5em 0.6em;
+}
+.mp-pad-count {
+    font-size: 0.78em;
+    opacity: 0.6;
+    white-space: nowrap;
+}
+.mp-name-input {
+    flex: 1;
+    border: none;
+    border-bottom: 1px solid #0003;
+    background: transparent;
+    font-family: inherit;
+    font-size: 0.88em;
+    padding: 0.2em 0.3em;
+    outline: none;
+    min-width: 0;
+}
+.mp-save-btn {
+    padding: 0.3em 0.8em;
+    border: none;
+    border-radius: 0.4em;
+    background: #333;
+    color: #fff;
+    font-family: inherit;
+    font-size: 0.82em;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.mp-save-btn:disabled {
+    opacity: 0.3;
+    cursor: default;
+}
+.mp-empty {
+    font-size: 0.82em;
+    opacity: 0.45;
+    text-align: center;
+    padding: 0.8em 0;
+}
+.mp-scene-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5em;
+}
+.mp-scene-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5em;
+    background: #0001;
+    border-radius: 0.5em;
+    padding: 0.4em 0.6em;
+}
+.mp-scene-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25em;
+}
+.mp-scene-name {
+    font-size: 0.88em;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.mp-scene-preview {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3em;
+}
+.mp-chord-pill {
+    font-size: 0.72em;
+    background: #0002;
+    border-radius: 0.3em;
+    padding: 0.15em 0.45em;
+    white-space: nowrap;
+}
+.mp-scene-actions {
+    display: flex;
+    gap: 0.3em;
+    flex-shrink: 0;
+    align-items: center;
+}
+.mp-btn {
+    padding: 0.25em 0.65em;
+    border: none;
+    border-radius: 0.35em;
+    background: #333;
+    color: #fff;
+    font-family: inherit;
+    font-size: 0.78em;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.mp-btn--del {
+    background: transparent;
+    color: #c44;
+    font-size: 0.9em;
+    padding: 0.2em 0.4em;
 }
