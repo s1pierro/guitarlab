@@ -3072,7 +3072,7 @@ class PanelReperes extends UXPanel {
             { key: '4',  label: '4',  name: '4te juste'            },
             { key: 'b5', label: 'b5', name: 'Triton'               },
             { key: '5',  label: '5',  name: '5te juste'            },
-            { key: 'm5', label: '#5', name: '5te augmentée', itkey: '#5' },
+            { key: 'm5', label: '#5', name: '5te augmentée'        },
             { key: '6',  label: '6',  name: '6te majeure'          },
             { key: 'b7', label: 'b7', name: '7ème mineure'         },
             { key: '7',  label: '7',  name: '7ème majeure'         },
@@ -3096,10 +3096,19 @@ class PanelReperes extends UXPanel {
         section('Intervalles — forme complète');
         const rowFull = document.createElement('div');
         rowFull.className = 'reperes-row';
-        INTERVALS.forEach(({ key, label, name, itkey }) => {
+        INTERVALS.forEach(({ key, label, name }) => {
+            const icname = key === 'r' ? 'itR' : 'it' + key.charAt(0).toUpperCase() + key.slice(1);
             const cell = document.createElement('div');
             cell.className = 'reperes-cell';
-            cell.innerHTML = `<i class="icon-it-${itkey ?? key}"></i><span class="reperes-cell-label">${label}</span><span class="reperes-cell-name">${name}</span>`;
+            const icEl = ic(icname);
+            icEl.classList.add('reperes-cell-icon');
+            const labelEl = document.createElement('span');
+            labelEl.className = 'reperes-cell-label';
+            labelEl.textContent = label;
+            const nameEl = document.createElement('span');
+            nameEl.className = 'reperes-cell-name';
+            nameEl.textContent = name;
+            cell.append(icEl, labelEl, nameEl);
             rowFull.appendChild(cell);
         });
         container.appendChild(rowFull);
