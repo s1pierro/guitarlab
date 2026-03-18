@@ -1,4 +1,4 @@
-const cacheName = 'gao-2.1';
+const cacheName = 'gao-2.0';
 
 const cacheFiles = [
     'assets/icon.svg',
