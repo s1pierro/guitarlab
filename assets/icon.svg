@@ -35,7 +35,6 @@
   <line x1="208" y1="200" x2="246" y2="134" stroke="#f0ddc0" stroke-width="3" opacity="0.75"/>
 
   <!-- Trou sonore -->
-  <circle cx="208" cy="200" r="42" fill="#5c2800"/>
   <circle cx="208" cy="200" r="42" fill="none" stroke="#f0ddc0" stroke-width="6"/>
 
   <!-- Cadre de la loupe -->
