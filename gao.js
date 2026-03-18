@@ -3649,6 +3649,10 @@ class Application {
         if (savedPartitions) this.partitions.data = savedPartitions;
         this.partitions.onStateChange = () => { this.storage.set('partitions', this.partitions.data); };
 
+        // ── ChordPads restaurés avant le mount UX (compteur correct au 1er rendu) ──
+        this._chordPads = [];
+        this._restoreChordPads();
+
         // ── UXStack ───────────────────────────────────────────────────────────
         this.uxstack = new UXStack(this.storage);
         this.panelMultipads = new PanelMultipads(this);
@@ -3660,7 +3664,6 @@ class Application {
         this.uxstack.mount(this.ux);
 
         // PluckPad maître — flottant déplaçable + minimisable + clonable
-        this._chordPads = [];
         this.pluckpad = new PluckPad(this.computedguitar.strings, this.appbody, {
             mode:       'master',
             storage:    this.storage,
@@ -3681,7 +3684,6 @@ class Application {
                 this._saveChordPads();
             },
         });
-        this._restoreChordPads();
     }
     _spawnChordPad (snapshot, left, top) {
         const pad = new PluckPad(this.computedguitar.strings, this.appbody, {
