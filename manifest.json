@@ -4,8 +4,8 @@
   "description": "Guitar*Lab is a guitar oriented tool to explore music",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#e61",
-  "theme_color": "#4d3700",
+  "background_color": "#0a0a1a",
+  "theme_color": "#2d1b4e",
   "icons": [
     {
       "src": "assets/icon-48.png",
