@@ -1360,21 +1360,11 @@ class ChordWizard {
             ? founded[0].chord
             : new Chord(frets, '?', '', '', '', '', notes.map(n => n.octavednote), []);
 
-        const pinbtn = document.createElement('span');
-        pinbtn.classList.add('pin-btn');
-        pinbtn.innerHTML = '<i class="icon-attach-2"></i>';
-        if (this.chordpinboard.has(chord)) pinbtn.classList.add('blast');
-        pinbtn.addEventListener('click', () => {
-            this.chordpinboard.pinchord(chord);
-            this.print(domdest); // rafraîchit l'état du bouton
-        }, true);
-
         if (recognized) {
             aguesstitle.innerHTML = '<strong>' + founded[0].chordtype + ' </strong><span class="score">' + founded[0].score.toFixed(1) + '</span>';
         } else {
             aguesstitle.innerHTML = '<span class="chord-unknown">?</span>';
         }
-        aguesstitle.prepend(pinbtn);
 
         // ── frettes + notes ──
         const aguessdesc = document.createElement('div');
