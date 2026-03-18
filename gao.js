@@ -3710,8 +3710,19 @@ class Application {
         pad.el.style.left   = left + 'px';
         pad.el.style.top    = top  + 'px';
         pad.el.style.bottom = 'auto';
+        this._clampPad(pad);
         this._chordPads.push(pad);
         return pad;
+    }
+
+    _clampPad (pad) {
+        const w = pad.el.offsetWidth;
+        const h = pad.el.offsetHeight;
+        if (!w || !h) return;
+        const maxLeft = window.innerWidth  - w;
+        const maxTop  = window.innerHeight - h;
+        pad.el.style.left = Math.max(0, Math.min(parseFloat(pad.el.style.left), maxLeft)) + 'px';
+        pad.el.style.top  = Math.max(0, Math.min(parseFloat(pad.el.style.top),  maxTop))  + 'px';
     }
 
     _saveChordPads () {
