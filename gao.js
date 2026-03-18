@@ -2744,7 +2744,18 @@ class PanelMultipads extends UXPanel {
             this._render();
         });
 
-        saveWrap.append(countEl, nameInput, saveBtn);
+        const clearBtn = document.createElement('button');
+        clearBtn.className = 'mp-btn mp-btn--del';
+        clearBtn.title = 'Vider la scène';
+        clearBtn.textContent = '⌫';
+        clearBtn.disabled = count === 0;
+        clearBtn.addEventListener('click', () => {
+            [...this._app._chordPads].forEach(p => p.el.remove());
+            this._app._chordPads = [];
+            this._app._saveChordPads();
+        });
+
+        saveWrap.append(countEl, clearBtn, nameInput, saveBtn);
         this._container.appendChild(saveWrap);
 
         // ── liste des scènes ──
