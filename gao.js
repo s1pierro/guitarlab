@@ -3661,7 +3661,8 @@ class Application {
 
         // ── UXStack ───────────────────────────────────────────────────────────
         this.uxstack = new UXStack(this.storage);
-        this.uxstack.add(new PanelMultipads(this));
+        this.panelMultipads = new PanelMultipads(this);
+        this.uxstack.add(this.panelMultipads);
         this.uxstack.add(new PanelCatalogue(this.chordwizard, this.computedguitar, this.groundrender, this.storage));
         this.uxstack.add(new PanelPartitions(this.partitions));
         this.uxstack.add(new PanelEcoute());
@@ -3722,6 +3723,7 @@ class Application {
                 pos: { rx: r.left / window.innerWidth, ry: r.top / window.innerHeight },
             };
         }));
+        this.panelMultipads?._render();
     }
 
     _restoreChordPads () {
