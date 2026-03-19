@@ -1227,17 +1227,17 @@ class PartitionManager {
 // Constantes de catalogue — définies une seule fois au niveau du module
 
 const VOICING_BADGES = [
-    { key: 'ordered',    sym: '↑', title: 'Intervalles en ordre croissant',         cls: 'badge-ordered'  },
-    { key: 'noMuteGap',  sym: '▬', title: 'Pas de corde mutée intérieure',          cls: 'badge-nomute'   },
-    { key: 'strictTriad',sym: '▲', title: 'Triade stricte — 3 cordes consécutives', cls: 'badge-triad'    },
-    { key: 'triad',      sym: '△', title: 'Triade — 3 cordes avec discontinuité',   cls: 'badge-triad'    },
-    { key: 'unique',     sym: '◇', title: 'Aucune note répétée',                    cls: 'badge-unique'   },
+    { key: 'ordered',    icon: 'checked',        title: 'Intervalles en ordre croissant',         cls: 'badge-ordered'  },
+    { key: 'noMuteGap',  icon: 'certificate',    title: 'Pas de corde mutée intérieure',          cls: 'badge-nomute'   },
+    { key: 'strictTriad',icon: 'triangleFilled', title: 'Triade stricte — 3 cordes consécutives', cls: 'badge-triad'    },
+    { key: 'triad',      icon: 'triangle',       title: 'Triade — 3 cordes avec discontinuité',   cls: 'badge-triad'    },
+    { key: 'unique',     icon: 'exact',          title: 'Aucune note répétée',                    cls: 'badge-unique'   },
 ];
 
-function _makeBadgeSpan (sym, cls, title) {
+function _makeBadgeSpan (icon, cls, title) {
     const b = document.createElement('span');
     b.classList.add('vc-badge', cls);
-    b.textContent = sym;
+    if (icon) b.appendChild(ic(icon));
     if (title) b.title = title;
     return b;
 }
@@ -1650,8 +1650,8 @@ class ChordWizard {
             const badgesDiv = document.createElement('div');
             badgesDiv.classList.add('vc-badges');
             const props = this._voicingProps(v, state.root, state.chordTypeIndex);
-            VOICING_BADGES.forEach(({ key, sym, title, cls }) => {
-                if (props[key]) badgesDiv.appendChild(_makeBadgeSpan(sym, cls, title));
+            VOICING_BADGES.forEach(({ key, icon, title, cls }) => {
+                if (props[key]) badgesDiv.appendChild(_makeBadgeSpan(icon, cls, title));
             });
 
             card.append(fretsDiv, badgesDiv);
@@ -1728,12 +1728,12 @@ class ChordWizard {
             // légende en bas de la zone scrollable
             const legend = document.createElement('div');
             legend.classList.add('catalog-legend');
-            VOICING_BADGES.forEach(({ sym, title, cls }) => {
+            VOICING_BADGES.forEach(({ icon, title, cls }) => {
                 const row = document.createElement('div');
                 row.classList.add('catalog-legend-row');
                 const lbl = document.createElement('span');
                 lbl.textContent = title;
-                row.append(_makeBadgeSpan(sym, cls, ''), lbl);
+                row.append(_makeBadgeSpan(icon, cls, ''), lbl);
                 legend.appendChild(row);
             });
             grid.appendChild(legend);
@@ -1748,11 +1748,11 @@ class ChordWizard {
         // ── filtres badges ──
         const badgeRow = document.createElement('div');
         badgeRow.className = 'catalog-pill-row catalog-badge-row';
-        const makeBadgeToggle = (key, sym, cls, title) => {
+        const makeBadgeToggle = (key, icon, cls, title) => {
             const pill = document.createElement('span');
             pill.className = 'catalog-pill catalog-badge-pill' + (state.badgeFilters.has(key) ? ' catalog-pill--active' : '');
             pill.title = title;
-            pill.appendChild(_makeBadgeSpan(sym, cls, ''));
+            pill.appendChild(_makeBadgeSpan(icon, cls, ''));
             pill.addEventListener('click', () => {
                 if (state.badgeFilters.has(key)) state.badgeFilters.delete(key);
                 else state.badgeFilters.add(key);
@@ -1761,8 +1761,18 @@ class ChordWizard {
             });
             return pill;
         };
-        VOICING_BADGES.forEach(({ key, sym, cls, title }) => badgeRow.appendChild(makeBadgeToggle(key, sym, cls, title)));
-        badgeRow.appendChild(makeBadgeToggle('none', '∅', 'badge-none', 'Sans badge'));
+        VOICING_BADGES.forEach(({ key, icon, cls, title }) => badgeRow.appendChild(makeBadgeToggle(key, icon, cls, title)));
+        const nonepill = document.createElement('span');
+        nonepill.className = 'catalog-pill catalog-badge-pill' + (state.badgeFilters.has('none') ? ' catalog-pill--active' : '');
+        nonepill.title = 'Sans badge';
+        nonepill.textContent = '∅';
+        nonepill.addEventListener('click', () => {
+            if (state.badgeFilters.has('none')) state.badgeFilters.delete('none');
+            else state.badgeFilters.add('none');
+            nonepill.classList.toggle('catalog-pill--active', state.badgeFilters.has('none'));
+            render();
+        });
+        badgeRow.appendChild(nonepill);
         domdest.appendChild(badgeRow);
 
         // ── filtres ──
@@ -3086,25 +3096,26 @@ class PanelReperes extends UXPanel {
         container.id = 'notation-content';
 
         const INTERVALS = [
-            { key: 'r',  label: 'R',  name: 'Tonique'              },
-            { key: 'b2', label: 'b2', name: '2de mineure'          },
-            { key: '2',  label: '2',  name: '2de majeure'          },
-            { key: 'b3', label: 'b3', name: '3ce mineure'          },
-            { key: '3',  label: '3',  name: '3ce majeure'          },
-            { key: '4',  label: '4',  name: '4te juste'            },
+            { key: 'r',  label: 'R',  name: 'Tonique'               },
+            { key: 'b2', label: 'b2', name: 'Seconde mineure'      },
+            { key: '2',  label: '2',  name: 'Seconde majeure'      },
+            { key: 'b3', label: 'b3', name: 'Tierce mineure'       },
+            { key: '3',  label: '3',  name: 'Tierce majeure'       },
+            { key: '4',  label: '4',  name: 'Quarte juste'         },
             { key: 'b5', label: 'b5', name: 'Triton'               },
-            { key: '5',  label: '5',  name: '5te juste'            },
-            { key: 'm5', label: '#5', name: '5te augmentée'        },
-            { key: '6',  label: '6',  name: '6te majeure'          },
-            { key: 'b7', label: 'b7', name: '7ème mineure'         },
-            { key: '7',  label: '7',  name: '7ème majeure'         },
+            { key: '5',  label: '5',  name: 'Quinte juste'         },
+            { key: 'm5', label: '#5', name: 'Quinte augmentée'     },
+            { key: '6',  label: '6',  name: 'Sixte majeure'        },
+            { key: 'b7', label: 'b7', name: 'Septième mineure'     },
+            { key: '7',  label: '7',  name: 'Septième majeure'     },
         ];
 
         const BADGES = [
-            { sym: '▬', label: 'pas de corde mutée intérieure' },
-            { sym: '▲', label: 'triade stricte (3 cordes consécutives)' },
-            { sym: '△', label: 'triade avec discontinuité' },
-            { sym: '◇', label: 'aucune note répétée' },
+            { icon: 'checked',        label: 'intervalles dans l\'ordre'           },
+            { icon: 'certificate',    label: 'pas de corde mutée intérieure'      },
+            { icon: 'triangleFilled', label: 'triade stricte (3 cordes consécutives)' },
+            { icon: 'triangle',       label: 'triade avec discontinuité'           },
+            { icon: 'exact',          label: 'aucune note répétée'                 },
         ];
 
         const section = (title) => {
@@ -3152,10 +3163,15 @@ class PanelReperes extends UXPanel {
         section('Qualificatifs de voicing');
         const badgeList = document.createElement('div');
         badgeList.className = 'reperes-badges';
-        BADGES.forEach(({ sym, label }) => {
+        BADGES.forEach(({ icon, label }) => {
             const item = document.createElement('div');
             item.className = 'reperes-badge-item';
-            item.innerHTML = `<span class="reperes-badge-sym">${sym}</span><span class="reperes-badge-label">${label}</span>`;
+            const icEl = ic(icon);
+            icEl.classList.add('reperes-badge-sym');
+            const labelEl = document.createElement('span');
+            labelEl.className = 'reperes-badge-label';
+            labelEl.textContent = label;
+            item.append(icEl, labelEl);
             badgeList.appendChild(item);
         });
         container.appendChild(badgeList);
