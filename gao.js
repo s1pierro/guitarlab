@@ -2305,6 +2305,17 @@ class GroundRender {
         tex.repeat.set(1, 2);
         return tex;
     }
+    _makeEclissesTexture () {
+        const tex = new THREE.TextureLoader().load('assets/wood-eclisses.png', () => {
+            tex.needsUpdate = true;
+            this.render();
+        });
+        tex.wrapS = THREE.RepeatWrapping;
+        tex.wrapT = THREE.RepeatWrapping;
+        tex.repeat.set(3, 1);
+
+        return tex;
+    }
     loadWavefrontGuitar (objfilename, mtlfilename, path = '') {
 
         new MTLLoader().setPath( path ).load( mtlfilename,
@@ -2320,6 +2331,7 @@ class GroundRender {
                 object.castShadow = true;
                 object.receiveShadow = true;
                 const spruceTexture = this._makeSpruceTexture();
+                const eclissesTexture = this._makeEclissesTexture();
                 object.traverse( function ( child )
                 {
                     if ( child instanceof THREE.Mesh )
@@ -2350,6 +2362,16 @@ class GroundRender {
                                 side: THREE.DoubleSide,
                                 shininess: 60,
                                 specular: new THREE.Color(0x553322),
+                            });
+                        }
+                        if (child.name === 'guitar.body')
+                        {
+                            // UV cylindriques baked dans l'OBJ par uv_eclisses.py
+                            child.material = new THREE.MeshPhongMaterial({
+                                map: eclissesTexture,
+                                side: THREE.DoubleSide,
+                                shininess: 80,
+                                specular: new THREE.Color(0x331100),
                             });
                         }
                     }
