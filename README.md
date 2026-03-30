@@ -5,7 +5,7 @@ Application web pour l'exploration de la théorie musicale à la guitare. Manche
 **Application :** https://s1pierro.github.io/guitarlab/
 
 ![GuitarLab](https://s1pierro.github.io/guitarlab/assets/screenshot-wide.png)
-![GuitarLab](https://s1pierro.github.io/guitarlab/assets/screenshot-narow.png)
+![GuitarLab](https://s1pierro.github.io/guitarlab/assets/screenshot-narrow.png)
 
 ---
 
