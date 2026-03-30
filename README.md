@@ -95,4 +95,4 @@ La définition de l'instrument est externalisée dans `guitars/classique-6.json`
 
 Usage non commercial — voir [`LICENSE`](LICENSE).
 
-Copyright © Thomas Saint Pierre (s1pierro / saintpierro) & Claude Sonnet 4.6 (Anthropic)
+Copyright © Thomas Saint Pierre s1pierro & Claude Sonnet 4.6 (Anthropic)
