@@ -6,9 +6,9 @@ Application web pour l'exploration de la théorie musicale à la guitare. Manche
 
 ![GuitarLab](https://s1pierro.github.io/guitarlab/assets/screenshot-wide.png) ![GuitarLab]
 <div style="display: flex; gap: 10px;">
-  <img src="https://s1pierro.github.io/guitarlab/assets/screenshot-narrow.png" style="width: 33%;">
-  <img src="https://s1pierro.github.io/guitarlab/assets/screenshot-narrow-b.png" style="width: 33%;">
-  <img src="https://s1pierro.github.io/guitarlab/assets/screenshot-narrow-c.png" style="width: 33%;">
+  <img src="https://s1pierro.github.io/guitarlab/assets/screenshot-narrow.png" style="width: 31%;">
+  <img src="https://s1pierro.github.io/guitarlab/assets/screenshot-narrow-b.png" style="width: 31%;">
+  <img src="https://s1pierro.github.io/guitarlab/assets/screenshot-narrow-c.png" style="width: 31%;">
 </div>
 
 ---
